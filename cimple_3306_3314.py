@@ -5,6 +5,7 @@
 
 import sys
 import string
+import re
 
 letters = string.ascii_letters
 numbers = string.digits
@@ -186,6 +187,268 @@ def lexAn():
     token = Token(tkType, content, lineCounter)
     return token
 
+
+
+def assignStat():
+    if ":=" in bffr :
+        if re.match('[\w\s]+'':=''[\w\s]+'';',bffr):
+            #ok
+        else:
+            errorHandler()
+        return True
+    
+def ifStat():
+    if "if" == bffr.split(" ")[0] :
+        if re.match('/if/\s+([\w\s]+[<>/==//!=//>=//<=//<>/][\w\s]+)',bffr):
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "{":
+                block()
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "}":
+                #ok
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+        return True
+
+def whileStat():
+    if "while" == bffr.split(" ")[0] :
+        if re.match('/while/\s+([\w\s]+[<>/==//!=//>=//<=//<>/][\w\s]+)',bffr):
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "{":
+                block()
+            else:
+                errorHandler()
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "}":
+                #ok
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+        return True
+                  
+
+def switchcaseStat():
+    if "switchcase" == bffr:
+        counter+=1
+        bffr = buffer[counter]
+        if re.match('/case/\s+(\s+([\w\s]+[<>/==//!=//>=//<=//<>/][\w\s]+)[\w\s]+)*',bffr):
+            counter+=1
+            bffr = buffer[counter]
+            if re.match('/default/[\w\s]+',bffr):
+                counter+=1
+                bffr = buffer[counter]
+                if bffr[0] == "{":
+                    block()
+                else:
+                    errorHandler()
+                counter+=1
+                bffr = buffer[counter]
+                if bffr[0] == "}":
+                    #ok
+                else:
+                    errorHandler()
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+        return True
+
+
+def forcaseStat():
+    if "forcase" == bffr:
+        counter+=1
+        bffr = buffer[counter]
+        if re.match('/case/\s+(\s+([\w\s]+[<>/==//!=//>=//<=//<>/][\w\s]+)[\w\s]+)*',bffr):
+            counter+=1
+            bffr = buffer[counter]
+            if re.match('/default/[\w\s]+',bffr):
+            if bffr[0] == "{":
+                    block()
+                else:
+                    errorHandler()
+                counter+=1
+                bffr = buffer[counter]
+                if bffr[0] == "}":
+                    #ok
+                else:
+                    errorHandler()
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+        return True
+
+def incaseStat():
+    if "incase" == bffr:
+        counter+=1
+        bffr = buffer[counter]
+        if re.match('/case/\s+(\s+([\w\s]+[<>/==//!=//>=//<=//<>/][\w\s]+)[\w\s]+)*',bffr):
+            if bffr[0] == "{":
+                block()
+            else:
+                errorHandler()
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "}":
+                #ok
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+        return True    
+
+def callStat():
+    if "call" == bffr.split(" ")[0] :
+        if re.match('/call/[\w\s]+([\w\s]+)*',bffr):
+            #ok
+        else:
+            errorHandler()
+        return True
+
+
+def returnStat():
+    if "return" == bffr.split(" ")[0] :
+        if re.match('/return/\s+([\w\s]+)*',bffr):
+            #ok
+        else:
+            errorHandler()
+        return True
+
+def inputStat():
+    if "input" == bffr.split(" ")[0] :
+        if re.match('/input/\s+([\w\s]+)*',bffr):
+            #ok
+        else:
+            errorHandler()
+        return True
+
+def printStat():
+    if "input" == bffr.split(" ")[0] :
+        if re.match('/print/\s+([\w\s]+)*',bffr):
+            #ok
+        else:
+            errorHandler()
+        return True
+
+def declerations():
+    
+    counter+=1
+    bffr = buffer[counter]
+    
+
+    while bffr[0] = "#" :
+        counter+=1
+        bffr = buffer[counter]
+        bffr = bffr.replace(","," ").split()
+    
+    while bffr[0]= "declare" :
+        bffr = buffer[counter]
+        if re.match('/declare/[\w\s,]+;',bffr):
+            #ok
+        else:
+            errorHandler()
+        counter+=1
+        bffr = buffer[counter]
+        bffr = bffr.replace(","," ").split()
+        while bffr[0] = "#" :
+            counter+=1
+            bffr = buffer[counter]
+            bffr = bffr.replace(","," ").split(" ")
+
+   
+def subprograms():
+    
+    bffr = buffer[counter]
+        while bffr[0] = "#" :
+        counter+=1
+        bffr = buffer[counter]
+        bffr = bffr.replace(","," ").split()
+    
+    while (bffr[0]= "function" or bffr[0]= "procedure"):
+        bffr = buffer[counter]
+        if re.match('/function/[\w\s]+([\w\s]+)',bffr) or re.match('/procedure/[\w\s]+([\w\s]+)',bffr):
+            if bffr[0] == "{":
+                    block()
+            else:
+                errorHandler()
+            counter+=1
+            bffr = buffer[counter]
+            if bffr[0] == "}":
+                #ok
+            else:
+                errorHandler()
+        else:
+            errorHandler()
+            
+
+def block():
+    bffr = buffer[counter]
+    bffr = bffr.replace(","," ").split(" ")
+    while bffr[0] = "#" :
+        counter+=1
+        bffr = buffer[counter]
+        bffr = bffr.replace(","," ").split(" ")
+
+    if bffr[counter][0] == "{":
+        counter+=1
+        bffr = buffer[counter]
+        bffr = bffr.replace(","," ").split(" ")
+        while(bffr[0][0] != "}")
+            while bffr[0] = "#" :
+                counter+=1
+                bffr = buffer[counter]
+                bffr = bffr.replace(","," ").split(" ")
+            bffr = buffer[counter]
+            comm=False
+            comm=assignStat()
+            comm=ifStat()
+            comm=whileStat()
+            comm=switchcaseStat()
+            comm=forcaseStat()
+            comm=incaseStat()
+            comm=callStat()
+            comm=returnStat()
+            comm=inputStat()
+            comm=printStat()
+            if comm == False:
+                errorHandler()
+
+
+        
+
+def programBlock():
+    declarations()
+    subprograms()
+    block()
+
+def program():
+    bffr = buffer[counter]
+    bffr = bffr.replace(","," ").split(" ")
+    if "program" == bffr[0] :
+        bffr = buffer[counter]
+        if re.match('/program/[\w\s]+')
+        programBlock()
+    else:
+        errorHandler()
+    if bffr[-1] == ".":
+        #ok
+    else:
+        errorHandler()
+
+def synAn():
+    while True:
+        buffer = sourceFile.readlines()
+        counter = 0
+        program()
+        
+    
 # Gets file to compile
 try:
     sourceFile = open(sys.argv[1])
