@@ -470,11 +470,11 @@ def incaseStat():
                     if token = "keyword" and token.content != "case":
                         break
                 else:
-                    errorHandler()
+                    errorHandler("Missing \')\'")
             else:
-                errorHandler()
+                errorHandler("Missing \'(\'")
     else:
-        errorHandler()
+        errorHandler("Keyword: \'case\' exptected")
     return True
 
 def returnStat():
@@ -485,9 +485,9 @@ def returnStat():
         if token == "groupSymbol" and token.content == ")":
             #ok
         else:
-            errorHandler()
+            errorHandler("Missing \')\'")
     else: 
-        errorHandler()
+        errorHandler("Missing \'(\'")
     return True
 
 def callStat():
@@ -500,11 +500,11 @@ def callStat():
             if token == "groupSymbol" and token.content == ")":
                 #ok
             else:
-                errorHandler()
+                errorHandler("Missing \')\'")
         else: 
-            errorHandler()
+            errorHandler("Missing \'(\'")
     else: 
-        errorHandler()
+        errorHandler("Identifier expected")
     return True
 
 def printStat():
@@ -515,9 +515,9 @@ def printStat():
         if token == "groupSymbol" and token.content == ")":
             #ok
         else:
-            errorHandler()
+            errorHandler("Missing \')\'")
     else: 
-        errorHandler()
+        errorHandler("Missing \'(\'")
     return True
 
 def inputStat():
@@ -528,11 +528,11 @@ def inputStat():
             if token == "groupSymbol" and token.content == ")":
                 #ok
             else:
-                errorHandler()
+                errorHandler("Missing \')\'")
         else:
-            errorHandler()
+            errorHandler("Identifier expected")
     else: 
-        errorHandler()
+        errorHandler("Missing \'(\'")
     return True
 
 def formalparitem():
@@ -541,26 +541,22 @@ def formalparitem():
         if token == "Identifier":
             #ok
         else:
-            errorHandler()
+            errorHandler("Identifier expected")
     else:
-        errorHandler()
+        errorHandler("Keyword \'in\' or \'inout\' expected")
 
 
 
 def formalparlist():
-    x=False;
+    x=False
     while True:
-        if token == "groupSymbol" and token.content == ")":
-            break
         token = lexAn()
         formalparitem()
         token = lexAn()
         if token == "delimeter" and token.content == ",":
             continue
-        elif token == "groupSymbol" and token.content == ")":
-            break
         else: 
-            errorHandler()
+            break
 
     
 def varlist():
@@ -571,11 +567,11 @@ def varlist():
                 token = lexAn()
                 continue
             elif token == "delimeter" and token.content == ";":
-                break;
+                break
             else:
-                errorHandler()
+                errorHandler("Missing \';\'")
     else:
-        errorHandler()
+        errorHandler("Identifier expected")
     
     
 def declarations():
@@ -597,13 +593,13 @@ def subprogram():
                 if token == "groupSymbol" and token.content == ")":
                     block()
                 else:
-                    errorHandler()
+                    errorHandler("Missing \')\'")
             else:
-                errorHandler()
+                errorHandler("Missing \'(\'")
         else:
-            errorHandler()
+            errorHandler("Identifier expected")
     else:
-        errorHandler() 
+        errorHandler("Expected keyword: \'function\' or \'procedure\'") 
 
 
 def statement():
@@ -641,7 +637,7 @@ def statement():
         else:
         errorHandler()
         if comm == False:
-            errorHandler()
+            errorHandler("Unknown command")
 
 
 def statements():
@@ -651,25 +647,25 @@ def statements():
                 statement()
                 token=lexAn()
                 if token == "delimeter" and token.content == ";":
-                    continue;
+                    continue
                 elif token == "groupSymbol" and token.content = "}":
-                    break;
+                    break
                 else:
-                    errorHandler() 
+                    errorHandler("Missing \';\' or \'}\'") 
         else:
             statement()
             if token == "delimeter" and token.content == ";":
                 
                     #ok
             else:
-                errorHandler() 
+                errorHandler("Missing \';\'") 
 
         
     
 
 
 def subprograms():
-    while (token == "keyword" and token.content == "function") :
+    while (token == "keyword" and token.content == "function" or token.content == "procedure") :
         subprogram()
         
         
@@ -694,11 +690,11 @@ def program():
             if token == "terminator"
                 #end
             else:
-                errorHandler()     
+                errorHandler("Terminator \'.\' missing")     
         else:
-            errorHandler()
+            errorHandler("Identifier expected")
     else:
-        errorHandler()
+        errorHandler("Keyword \'program\' missing")
     
    
     
