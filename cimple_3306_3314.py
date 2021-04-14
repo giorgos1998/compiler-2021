@@ -190,190 +190,184 @@ def lexAn():
 ################################### Syntax ###################################
 
 def REL_OP():
-    if token = "relOp" and (token.content == "=" or token.content == "<=" or token.content == ">=" or token.content == ">" or token.content == "<" or token.content == "<>"): 
-        #ok
+    global token
+    if token.tkType == "relOp" and (token.content == "=" or token.content == "<=" or token.content == ">=" or token.content == ">" or token.content == "<" or token.content == "<>"): 
+        token = lexAn()
     else:
         errorHandler("Relational operator expected")
 
 def ADD_OP():
-    if token = "addOp" and (token.content == "+" or token.content == "-"):
-        #ok
+    global token
+    if token.tkType == "addOp" and (token.content == "+" or token.content == "-"):
+        token = lexAn()
     else:
         errorHandler("\'+\' or \'-\' exptected")
 
 def MUL_OP():
-    if token = "mulOp" and (token.content == "*" or token.content == "/"):
-        #ok
+    global token
+    if token.tkType == "mulOp" and (token.content == "*" or token.content == "/"):
+        token = lexAn()
     else:
         errorHandler("\'*\' or \'/\' expected")
 
 def INTEGER():
-    if token = "number" and isinstance(token.content, int):
-        #ok
+    global token
+    if token.tkType == "number" and token.content.isnumeric():
+        token = lexAn()
     else:
-        errorHandler(token.content + "is not of type int")
+        errorHandler(token.content + " " + "is not of type int")
 
 def ID():
-    if token = "identifier":
-        #ok
+    global token
+    if token.tkType == "identifier":
+       token = lexAn()
     else:
-        errorHandler(token.content + "is not acceptable as identifier")
+        errorHandler(token.content + " " + "is not acceptable as identifier")
 
 def optionalSign():
-    ADD_OP()
-
-def expression():
-    optionalSign()
-    token = lexAn()
-    term()
-    token = lexAn()
-    while token = "addOp":
+    global token
+    if token.tkType == "addOp":
         ADD_OP()
-        token = lexAn()
-        term()
-        token = lexAn()
+       
 
 def actualparitem():
-    if token == "keyword" and (token.content == "in" or token.content == "inout"):
+    global token
+    if token.tkType == "keyword" and token.content == "in":
         token = lexAn()
-        if token == "Identifier":
-            #ok
-        else:
-            errorHandler(token.content + "is not acceptable as identifier")
+        expression()
+    elif token.tkType == "keyword" and token.content == "inout":
+        token = lexAn()
+        ID()
     else:
         errorHandler("Expected in or inout")
 
 def actualparlist():
+    global token
     x=False
     while True:
-        token = lexAn()
         actualparitem()
-        token = lexAn()
-        if token == "delimeter" and token.content == ",":
+        if token.tkType == "delimiter" and token.content == ",":
             continue
-        elif token == "groupSymbol" and token.content == ")":
+        elif token.tkType == "groupSymbol" and token.content == ")":
             break
         else: 
             errorHandler("Missing \')\'")
 
 def idtail():
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         actualparlist()
-        token = lexAn()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
         else:
             errorHandler("Missing \')\'")
     else:
         errorHandler("Missing \'(\'")
 
-
-
-def factor():
-    if token = "number":
-        token = lexAn()
-        INTEGER()
-        token = lexAn()
-    elif token == "groupSymbol" and token.content == "(":
-        token = lexAn()
-        expression()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
-        else:
-            errorHandler()
-    elif token = "identifier":
-        token = lexAn()
-        idtail()
-    else:
-        errorHandler("Wrong expression")
-
-
-
-def term():
-    factor()
-    token = lexAn()
-    while token = "mulOp:
-        MUL_OP()
-        token = lexAn()
-        boolfactor()
-        token = lexAn()    
+ 
 
 def boolfactor():
-    if token = "keyword" and token.content == "not":
+    global token
+    if token.tkType == "keyword" and token.content == "not":
         token = lexAn()
-        if token == "groupSymbol" and token.content == "[":
+        if token.tkType == "groupSymbol" and token.content == "[":
             token = lexAn()
             condition()
             token = lexAn()
-            if token == "groupSymbol" and token.content == "]":
-                #ok
+            if token.tkType == "groupSymbol" and token.content == "]":
+                token = lexAn()
             else:
                 errorHandler("Missing \']\'")
         else:
             errorHandler("Missing \'[\'")
-    elif token == "groupSymbol" and token.content == "[":
+    elif token.tkType == "groupSymbol" and token.content == "[":
+        token = lexAn()
+        condition()
+        token = lexAn()
+        if token.tkType == "groupSymbol" and token.content == "]":
             token = lexAn()
-            condition()
-            token = lexAn()
-            if token == "groupSymbol" and token.content == "]":
-                #ok
-            else:
-                errorHandler("Missing \']\'")
+        else:
+            errorHandler("Missing \']\'")
     else:
-        token = lexAn()
         expression()
-        token = lexAn()
-        REL_OP
-        token = lexAn()
+        REL_OP()
         expression()
-        token = lexAn()
+        
 
 def boolterm():
+    global token
     boolfactor()
-    token = lexAn()
-    while token = "keyword" and token.content == "and":
+    while token.tkType == "keyword" and token.content == "and":
         token = lexAn()
         boolfactor()
+
+def factor():
+    global token
+    if token.tkType == "number":
+        INTEGER()
+    elif token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
+        expression()
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
+        else:
+            errorHandler("Missing \')\'")
+    else:
+        ID()
+        if token.tkType == "groupSymbol" and token.content == "(":
+            idtail()
+        
 
+def term():
+    global token
+    factor()
+    while token.tkType == "mulOp":
+        MUL_OP()
+        factor()
+          
 
+def expression():
+    global token
+    optionalSign()
+    term()
+    while token.tkType == "addOp":
+        ADD_OP()
+        term()
 
 def condition():
+    global token
     boolterm()
-    token = lexAn()
-    while token = "keyword" and token.content == "or":
+    while token.tkType == "keyword" and token.content == "or":
         token = lexAn()
         boolterm()
-        token = lexAn()
 
 def elsepart():
-    if token = "keyword" and token.content == "else":
+    global token
+    if token.tkType == "keyword" and token.content == "else":
         token = lexAn()
         statements()
     else:
         errorHandler("else part expected")
 
 def assignStat():
-    if token == "assignment" and token.content == ":=":
+    global token
+    ID()
+    if token.tkType == "assignment" and token.content == ":=":
         token = lexAn()
         expression()
-        if token == "delimeter" and token.content == ";":
-            #ok
-        else:
-            errorHandler("Missing \';\'")
     else:
         errorHandler("Missing assignment symbol \':=\'")  
     return True
 
 def ifStat():
-    
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         condition()
         token = lexAn()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
         else:
             errorHandler("Missing \')\'")
         statements()
@@ -384,40 +378,42 @@ def ifStat():
 
 
 def whileStat():
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         condition()
-        token = lexAn()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
         else:
             errorHandler("Missing \')\'")
-        token = lexAn()
-        statements() 
+        
+        statements()
+        token = lexAn() 
     else:
         errorHandler("Missing \'(\'")   
     return True
                   
 
 def switchcaseStat():
-    if token = "keyword" and token.content == "case":
+    global token
+    if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
-            if token == "groupSymbol" and token.content == "(":
+            if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
                 token = lexAn()
-                if token == "groupSymbol" and token.content == ")":
+                if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
                     token = lexAn()
-                    if token = "keyword" and token.content != "case":
+                    if token.tkType == "keyword" and token.content != "case":
                         break
                 else:
                     errorHandler("Missing \')\'")
             else:
                 errorHandler()
-        if token = "keyword" and token.content == "default":
+        if token.tkType == "keyword" and token.content == "default":
             token = lexAn()
             statements()
             token = lexAn()
@@ -428,24 +424,25 @@ def switchcaseStat():
     return True
 
 def forcaseStat():
-    if token = "keyword" and token.content == "case":
+    global token
+    if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
-            if token == "groupSymbol" and token.content == "(":
+            if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
                 token = lexAn()
-                if token == "groupSymbol" and token.content == ")":
+                if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
                     token = lexAn()
-                    if token = "keyword" and token.content != "case":
+                    if toke.tkTypen == "keyword" and token.content != "case":
                         break
                 else:
                     errorHandler("Missing \')\'")
             else:
                 errorHandler("Missing \'(\'")
-        if token = "keyword" and token.content == "default":
+        if token.tkType == "keyword" and token.content == "default":
             token = lexAn()
             statements()
             token = lexAn()
@@ -456,18 +453,19 @@ def forcaseStat():
     return True
 
 def incaseStat():
-    if token = "keyword" and token.content == "case":
+    global token
+    if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
-            if token == "groupSymbol" and token.content == "(":
+            if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
                 token = lexAn()
-                if token == "groupSymbol" and token.content == ")":
+                if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
                     token = lexAn()
-                    if token = "keyword" and token.content != "case":
+                    if token.tkType == "keyword" and token.content != "case":
                         break
                 else:
                     errorHandler("Missing \')\'")
@@ -478,42 +476,42 @@ def incaseStat():
     return True
 
 def returnStat():
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         expression()
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
+        else:
+            errorHandler("Missing \')\'")
+    else: 
+        errorHandler("Missing \'(\'")
+    
+    return True
+
+def callStat():
+    global token
+    ID()
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
+        expression()
+    
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
         else:
             errorHandler("Missing \')\'")
     else: 
         errorHandler("Missing \'(\'")
     return True
 
-def callStat():
-    if token == "identifier":
-
-        if token == "groupSymbol" and token.content == "(":
-            token = lexAn()
-            expression()
-            token = lexAn()
-            if token == "groupSymbol" and token.content == ")":
-                #ok
-            else:
-                errorHandler("Missing \')\'")
-        else: 
-            errorHandler("Missing \'(\'")
-    else: 
-        errorHandler("Identifier expected")
-    return True
-
 def printStat():
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         expression()
-        token = lexAn()
-        if token == "groupSymbol" and token.content == ")":
-            #ok
+        
+        if token.tkType == "groupSymbol" and token.content == ")":
+            token = lexAn()
         else:
             errorHandler("Missing \')\'")
     else: 
@@ -521,188 +519,170 @@ def printStat():
     return True
 
 def inputStat():
-    if token == "groupSymbol" and token.content == "(":
+    global token
+    if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        if token == "identifier":
+        ID()
+        if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
-            if token == "groupSymbol" and token.content == ")":
-                #ok
-            else:
-                errorHandler("Missing \')\'")
         else:
-            errorHandler("Identifier expected")
+            errorHandler("Missing \')\'")
     else: 
         errorHandler("Missing \'(\'")
     return True
 
 def formalparitem():
-    if token == "keyword" and (token.content == "in" or token.content == "inout"):
+    global token
+    if token.tkType == "keyword" and (token.content == "in" or token.content == "inout"):
         token = lexAn()
-        if token == "Identifier":
-            #ok
-        else:
-            errorHandler("Identifier expected")
+        ID()
     else:
         errorHandler("Keyword \'in\' or \'inout\' expected")
 
 
 
 def formalparlist():
+    global token
     x=False
     while True:
-        token = lexAn()
         formalparitem()
-        token = lexAn()
-        if token == "delimeter" and token.content == ",":
+        #token = lexAn()
+        if token.tkType == "delimiter" and token.content == ",":
             continue
         else: 
             break
 
     
 def varlist():
-    if token == "identifier":
-        while token == "identifier":
-            token = lexAn()
-            if token == "delimeter" and token.content == ",":
-                token = lexAn()
-                continue
-            elif token == "delimeter" and token.content == ";":
-                break
-            else:
-                errorHandler("Missing \';\'")
-    else:
-        errorHandler("Identifier expected")
-    
+    global token
+    ID()
+    while token.tkType == "delimiter" and token.content == ",":
+        token = lexAn()
+        ID()
+        if token.tkType == "delimiter" and token.content == ";":
+            break
+        if token.tkType == "delimiter" and token.content != ";" and token.content != ",":
+            errorHandler("Missing \';\'")
     
 def declarations():
-    while token == "keyword" and token.content == "declare":
-                varlist()
-                token = lexAn()
+    global token
+    while token.tkType == "keyword" and token.content == "declare":
+        token = lexAn()
+        varlist()
+        token = lexAn()
 
 def subprogram():    
-    
-    flag = 0
-    if token == "keyword" and (token.content == "function" or token.content == "procedure") :
+    global token
+    if token.tkType == "keyword" and (token.content == "function" or token.content == "procedure") :
         token = lexAn()
-        if token == "identifier":
+        ID()
+        if token.tkType == "groupSymbol" and token.content == "(":
             token = lexAn()
-            if token == "groupSymbol" and token.content == "(":
+            formalparlist()
+            if token.tkType == "groupSymbol" and token.content == ")":
                 token = lexAn()
-                formalparlist()
-                token = lexAn()
-                if token == "groupSymbol" and token.content == ")":
-                    block()
-                else:
-                    errorHandler("Missing \')\'")
+                block()
             else:
-                errorHandler("Missing \'(\'")
+                errorHandler("Missing \')\'")
         else:
-            errorHandler("Identifier expected")
+            errorHandler("Missing \'(\'")
     else:
         errorHandler("Expected keyword: \'function\' or \'procedure\'") 
 
 
 def statement():
-        comm=False
-        if token = "identifier":
-            token = lexAn()
-            comm=assignStat()
-        elif token = "keyword" and token.content = "if":
-            token = lexAn()
-            comm=ifStat()
-        elif token = "keyword" and token.content = "while":
-            token = lexAn()
-            comm=whileStat()
-        elif token = "keyword" and token.content = "switchcase":
-            token = lexAn()
-            comm=switchcaseStat()
-        elif token = "keyword" and token.content = "forcase":
-            token = lexAn()
-            comm=forcaseStat()
-        elif token = "keyword" and token.content = "incase":
-            token = lexAn()
-            comm=incaseStat()
-        elif token = "keyword" and token.content = "call":
-            token = lexAn()
-            comm=callStat()
-        elif token = "keyword" and token.content = "return":
-            token = lexAn()
-            comm=returnStat()
-        elif token = "keyword" and token.content = "input":
-            token = lexAn()
-            comm=inputStat()
-        elif token = "keyword" and token.content = "print":
-            token = lexAn()
-            comm=printStat()
-        else:
-        errorHandler()
-        if comm == False:
-            errorHandler("Unknown command")
+    global token
+    comm=False
+    if token.tkType == "identifier":
+        comm=assignStat()
+    elif token.tkType == "keyword" and token.content == "if":
+        token = lexAn()
+        comm=ifStat()
+    elif token.tkType == "keyword" and token.content == "while":
+        token = lexAn()
+        comm=whileStat()
+    elif token.tkType == "keyword" and token.content == "switchcase":
+        token = lexAn()
+        comm=switchcaseStat()
+    elif token.tkType == "keyword" and token.content == "forcase":
+        token = lexAn()
+        comm=forcaseStat()
+    elif token.tkType == "keyword" and token.content == "incase":
+        token = lexAn()
+        comm=incaseStat()
+    elif token.tkType == "keyword" and token.content == "call":
+        token = lexAn()
+        comm=callStat()
+    elif token.tkType == "keyword" and token.content == "return":
+        token = lexAn()
+        comm=returnStat()
+    elif token.tkType == "keyword" and token.content == "input":
+        token = lexAn()
+        comm=inputStat()
+    elif token.tkType == "keyword" and token.content == "print":
+        token = lexAn()
+        comm=printStat()
+    if comm == False:
+        errorHandler("Unknown command")
 
 
 def statements():
-        if token = "groupSymbol" and token.content = "{":
-            while True:
-                token=lexAn()
-                statement()
-                token=lexAn()
-                if token == "delimeter" and token.content == ";":
-                    continue
-                elif token == "groupSymbol" and token.content = "}":
-                    break
-                else:
-                    errorHandler("Missing \';\' or \'}\'") 
-        else:
+    global token
+    if token.tkType == "groupSymbol" and token.content == "{":
+        token=lexAn()
+        x=0
+        while True:
             statement()
-            if token == "delimeter" and token.content == ";":
-                
-                    #ok
+            if token.tkType == "delimiter" and token.content == ";":
+                token = lexAn()
+                if token.tkType == "groupSymbol" and token.content == "}":
+                    break
             else:
                 errorHandler("Missing \';\'") 
+    else:
+        statement()
+        if token.tkType == "delimiter" and token.content == ";":
+            token = lexAn()
+        else:
+            errorHandler("Missing \';\'") 
 
         
     
 
 
 def subprograms():
-    while (token == "keyword" and token.content == "function" or token.content == "procedure") :
+    global token
+    while (token.tkType == "keyword" and token.content == "function" or token.content == "procedure") :
         subprogram()
+        token = lexAn()
         
         
         
 
-def programBlock():
-    token = lexAn()
+def block():
+    global token
     declarations()
-    token = lexAn()
     subprograms()
-    token = lexAn()
     statements()
 
 
 def program():
-
-    if token == "keyword" and token.content == "program":
+    global token
+    if token.tkType == "keyword" and token.content == "program":
         token = lexAn()
-        if token == "identifier":
-            programBlock()
-            token = lexAn()
-            if token == "terminator"
-                #end
-            else:
-                errorHandler("Terminator \'.\' missing")     
+        ID()
+        block()
+        token = lexAn()
+        if token.tkType == "terminator":
+            x="end"
         else:
-            errorHandler("Identifier expected")
+            errorHandler("Terminator \'.\' missing")     
     else:
         errorHandler("Keyword \'program\' missing")
-    
-   
-    
 
 def synAn():
-    while True:
-        token = lexAn()
-        program()
+    global token
+    program()
         
     
 # Gets file to compile
@@ -719,6 +699,7 @@ else:
         sys.exit("Error: Source file must be a C-imple file (.ci)")
 
 token = lexAn()
+synAn()
 while token.tkType != "terminator":
     print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
     token = lexAn()
