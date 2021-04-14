@@ -365,7 +365,6 @@ def ifStat():
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         condition()
-        token = lexAn()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
@@ -402,7 +401,6 @@ def switchcaseStat():
             if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
-                token = lexAn()
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
@@ -431,7 +429,6 @@ def forcaseStat():
             if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
-                token = lexAn()
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
@@ -460,7 +457,6 @@ def incaseStat():
             if token.tkType == "groupSymbol" and token.content == "(":
                 token = lexAn()
                 condition()
-                token = lexAn()
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
