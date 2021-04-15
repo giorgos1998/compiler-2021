@@ -222,7 +222,7 @@ def ID():
     if token.tkType == "identifier":
        token = lexAn()
     else:
-        errorHandler(token.content + " " + "is not acceptable as identifier")
+        errorHandler(token.content + " is not acceptable as identifier")
 
 def optionalSign():
     global token
@@ -348,6 +348,7 @@ def elsepart():
         token = lexAn()
         statements()
     else:
+        # BUG else part is not mandatory (check grammar)
         errorHandler("else part expected")
 
 def assignStat():
@@ -357,7 +358,7 @@ def assignStat():
         token = lexAn()
         expression()
     else:
-        errorHandler("Missing assignment symbol \':=\'")  
+        errorHandler("Missing assignment symbol ':='")  
     return True
 
 def ifStat():
@@ -368,11 +369,11 @@ def ifStat():
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' after 'if' condition")
         statements()
         elsepart() 
     else:
-        errorHandler("Missing \'(\'")   
+        errorHandler("Missing '(' after 'if' keyword")   
     return True
 
 
@@ -384,12 +385,12 @@ def whileStat():
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
-        
+            errorHandler("Missing ')' after 'while' condition")
         statements()
+        # NOTE token should not change here, but on statements()
         token = lexAn() 
     else:
-        errorHandler("Missing \'(\'")   
+        errorHandler("Missing '(' after 'while' keyword")   
     return True
                   
 
@@ -533,13 +534,13 @@ def formalparitem():
         token = lexAn()
         ID()
     else:
-        errorHandler("Keyword \'in\' or \'inout\' expected")
+        errorHandler("Keyword 'in' or 'inout' expected")
 
 
-
+# BUG what if we have no parameters for the function?
+# Maybe check for ')' here?
 def formalparlist():
     global token
-    x=False
     while True:
         formalparitem()
         #token = lexAn()
@@ -548,7 +549,8 @@ def formalparlist():
         else: 
             break
 
-    
+# BUG what if there is only one decleration? e.g. declare x;
+# Maybe delimiter ';' handling should be in declarations() (check grammar)
 def varlist():
     global token
     ID()
@@ -558,18 +560,20 @@ def varlist():
         if token.tkType == "delimiter" and token.content == ";":
             break
         if token.tkType == "delimiter" and token.content != ";" and token.content != ",":
-            errorHandler("Missing \';\'")
+            errorHandler("Missing ';' at the end of variable declaration")
     
 def declarations():
     global token
     while token.tkType == "keyword" and token.content == "declare":
         token = lexAn()
         varlist()
+        # NOTE token should change in varlist()
         token = lexAn()
 
 def subprogram():    
     global token
-    if token.tkType == "keyword" and (token.content == "function" or token.content == "procedure") :
+    # NOTE subprograms() already checked for keywords, double checking here not needed
+    if token.tkType == "keyword" and (token.content == "function" or token.content == "procedure"):
         token = lexAn()
         ID()
         if token.tkType == "groupSymbol" and token.content == "(":
@@ -579,68 +583,71 @@ def subprogram():
                 token = lexAn()
                 block()
             else:
-                errorHandler("Missing \')\'")
+                errorHandler("Missing ')' at function/procedure declaration")
         else:
-            errorHandler("Missing \'(\'")
+            errorHandler("Missing '(' at function/procedure declaration")
     else:
-        errorHandler("Expected keyword: \'function\' or \'procedure\'") 
+        errorHandler("Expected keyword: 'function' or 'procedure'") 
 
 
 def statement():
     global token
-    comm=False
+    # flag used to determine if given word is a known command or not
+    isCommand = False
     if token.tkType == "identifier":
-        comm=assignStat()
+        # NOTE token should change here
+        # BUG missing token
+        isCommand=assignStat()
     elif token.tkType == "keyword" and token.content == "if":
         token = lexAn()
-        comm=ifStat()
+        isCommand=ifStat()
     elif token.tkType == "keyword" and token.content == "while":
         token = lexAn()
-        comm=whileStat()
+        isCommand=whileStat()
     elif token.tkType == "keyword" and token.content == "switchcase":
         token = lexAn()
-        comm=switchcaseStat()
+        isCommand=switchcaseStat()
     elif token.tkType == "keyword" and token.content == "forcase":
         token = lexAn()
-        comm=forcaseStat()
+        isCommand=forcaseStat()
     elif token.tkType == "keyword" and token.content == "incase":
         token = lexAn()
-        comm=incaseStat()
+        isCommand=incaseStat()
     elif token.tkType == "keyword" and token.content == "call":
         token = lexAn()
-        comm=callStat()
+        isCommand=callStat()
     elif token.tkType == "keyword" and token.content == "return":
         token = lexAn()
-        comm=returnStat()
+        isCommand=returnStat()
     elif token.tkType == "keyword" and token.content == "input":
         token = lexAn()
-        comm=inputStat()
+        isCommand=inputStat()
     elif token.tkType == "keyword" and token.content == "print":
         token = lexAn()
-        comm=printStat()
-    if comm == False:
-        errorHandler("Unknown command")
+        isCommand=printStat()
+    if isCommand == False:
+        errorHandler("Unknown command '" + token.content + "'")
 
 
 def statements():
     global token
     if token.tkType == "groupSymbol" and token.content == "{":
         token=lexAn()
-        x=0
         while True:
             statement()
             if token.tkType == "delimiter" and token.content == ";":
                 token = lexAn()
+                # BUG Final statement doesn't need ';' (according to grammar)
                 if token.tkType == "groupSymbol" and token.content == "}":
                     break
             else:
-                errorHandler("Missing \';\'") 
+                errorHandler("Missing ';' at end of statement") 
     else:
         statement()
         if token.tkType == "delimiter" and token.content == ";":
             token = lexAn()
         else:
-            errorHandler("Missing \';\'") 
+            errorHandler("Missing ';' at end of statement") 
 
         
     
@@ -648,14 +655,17 @@ def statements():
 
 def subprograms():
     global token
-    while (token.tkType == "keyword" and token.content == "function" or token.content == "procedure") :
+    while (token.tkType == "keyword" and (token.content == "function" or token.content == "procedure")) :
+        # NOTE token should be prepared here for subprogram() to use
         subprogram()
+        # NOTE token should change in subprogram() (possibly)
         token = lexAn()
         
         
         
 
 def block():
+    # NOTE possibly no need to add token here
     global token
     declarations()
     subprograms()
@@ -668,13 +678,14 @@ def program():
         token = lexAn()
         ID()
         block()
+        # NOTE token should change in block()
         token = lexAn()
         if token.tkType == "terminator":
-            x="end"
+            print("end")
         else:
-            errorHandler("Terminator \'.\' missing")     
+            errorHandler("Terminator '.' missing")     
     else:
-        errorHandler("Keyword \'program\' missing")
+        errorHandler("Keyword 'program' missing")
 
 def synAn():
     global token
@@ -694,12 +705,12 @@ else:
     if sys.argv[1][-3:] != ".ci":
         sys.exit("Error: Source file must be a C-imple file (.ci)")
 
-token = lexAn()
-synAn()
-while token.tkType != "terminator":
-    print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
-    token = lexAn()
-print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
+# token = lexAn()
+# synAn()
+# while token.tkType != "terminator":
+#     print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
+#     token = lexAn()
+# print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
 
 sourceFile.close()
 print("program finished")
