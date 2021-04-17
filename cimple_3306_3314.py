@@ -191,6 +191,7 @@ def lexAn():
 
 def REL_OP():
     global token
+    # NOTE no need to check all types of relOp's, already done on lexical analyzer
     if token.tkType == "relOp" and (token.content == "=" or token.content == "<=" or token.content == ">=" or token.content == ">" or token.content == "<" or token.content == "<>"): 
         token = lexAn()
     else:
@@ -198,6 +199,7 @@ def REL_OP():
 
 def ADD_OP():
     global token
+    # NOTE no need to check all types of addOp's, already done on lexical analyzer
     if token.tkType == "addOp" and (token.content == "+" or token.content == "-"):
         token = lexAn()
     else:
@@ -205,6 +207,7 @@ def ADD_OP():
 
 def MUL_OP():
     global token
+    # NOTE no need to check all types of mulOp's, already done on lexical analyzer
     if token.tkType == "mulOp" and (token.content == "*" or token.content == "/"):
         token = lexAn()
     else:
@@ -212,6 +215,7 @@ def MUL_OP():
 
 def INTEGER():
     global token
+    # NOTE no need to check if token is number, lexical analyzer has already done that
     if token.tkType == "number" and token.content.isnumeric():
         token = lexAn()
     else:
@@ -239,11 +243,11 @@ def actualparitem():
         token = lexAn()
         ID()
     else:
-        errorHandler("Expected in or inout")
+        errorHandler("Keyword 'in' or 'inout' expected before parameter name")
 
 def actualparlist():
     global token
-    x=False
+    # BUG actualparlist can be empty, should handle this case
     while True:
         actualparitem()
         if token.tkType == "delimiter" and token.content == ",":
@@ -251,19 +255,20 @@ def actualparlist():
         elif token.tkType == "groupSymbol" and token.content == ")":
             break
         else: 
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' after function/procedure parameters")
 
 def idtail():
     global token
+    # BUG idtail can be empty
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         actualparlist()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' after function/procedure parameters")
     else:
-        errorHandler("Missing \'(\'")
+        errorHandler("Missing '(' after function/procedure name")
 
  
 
@@ -274,21 +279,23 @@ def boolfactor():
         if token.tkType == "groupSymbol" and token.content == "[":
             token = lexAn()
             condition()
+            # NOTE token change here should not be needed
             token = lexAn()
             if token.tkType == "groupSymbol" and token.content == "]":
                 token = lexAn()
             else:
-                errorHandler("Missing \']\'")
+                errorHandler("Missing ']' at the end of 'not' expression")
         else:
-            errorHandler("Missing \'[\'")
+            errorHandler("Missing '[' after 'not' keyword")
     elif token.tkType == "groupSymbol" and token.content == "[":
         token = lexAn()
         condition()
+        # NOTE token change here should not be needed
         token = lexAn()
         if token.tkType == "groupSymbol" and token.content == "]":
             token = lexAn()
         else:
-            errorHandler("Missing \']\'")
+            errorHandler("Missing ']' at the end of a bool expression")
     else:
         expression()
         REL_OP()
@@ -312,9 +319,10 @@ def factor():
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' at the end of an arithmetic expression")
     else:
         ID()
+        # NOTE no need to check for '(', only idtail can follow
         if token.tkType == "groupSymbol" and token.content == "(":
             idtail()
         
@@ -396,6 +404,7 @@ def whileStat():
 
 def switchcaseStat():
     global token
+    # BUG switchcase can have only 'default' (yeah stupid but grammar is like that...)
     if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
@@ -405,25 +414,30 @@ def switchcaseStat():
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
+                    # NOTE token should change inside statements()
                     token = lexAn()
                     if token.tkType == "keyword" and token.content != "case":
+                        # BUG if token is 'case' it doesn't get the next token (which should be '(')
+                        # possible fix: move token = lexAn() inside while
                         break
                 else:
-                    errorHandler("Missing \')\'")
+                    errorHandler("Missing ')' after 'case' condition")
             else:
-                errorHandler()
+                errorHandler("Missing '(' after 'case' keyword")
         if token.tkType == "keyword" and token.content == "default":
             token = lexAn()
             statements()
+            # NOTE token should change inside statements()
             token = lexAn()
         else:
-            errorHandler("Keyword: \'default\' exptected")
+            errorHandler("Keyword: 'default' expected at the end of switchcase")
     else:
-        errorHandler("Keyword: \'case\' exptected")
+        errorHandler("Keyword: 'case' expected inside switchcase")
     return True
 
 def forcaseStat():
     global token
+    # BUG forcase can have only 'default' (yeah stupid but grammar is like that...)
     if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
@@ -433,25 +447,30 @@ def forcaseStat():
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
+                    # NOTE token should change inside statements()
                     token = lexAn()
-                    if toke.tkTypen == "keyword" and token.content != "case":
+                    if token.tkTypen == "keyword" and token.content != "case":
+                        # BUG if token is 'case' it doesn't get the next token (which should be '(')
+                        # possible fix: move token = lexAn() inside while
                         break
                 else:
-                    errorHandler("Missing \')\'")
+                    errorHandler("Missing ')' after 'case' condition")
             else:
-                errorHandler("Missing \'(\'")
+                errorHandler("Missing '(' after 'case' keyword")
         if token.tkType == "keyword" and token.content == "default":
             token = lexAn()
             statements()
+            # NOTE token should change inside statements()
             token = lexAn()
         else:
-            errorHandler("Keyword: \'default\' exptected")
+            errorHandler("Keyword: 'default' expected at the end of forcase")
     else:
-        errorHandler("Keyword: \'case\' exptected")
+        errorHandler("Keyword: 'case' exptected inside forcase")
     return True
 
 def incaseStat():
     global token
+    # BUG incase can be empty (bruh...)
     if token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         while True:
@@ -461,15 +480,18 @@ def incaseStat():
                 if token.tkType == "groupSymbol" and token.content == ")":
                     token = lexAn()
                     statements()
+                    # NOTE token should change inside statements()
                     token = lexAn()
                     if token.tkType == "keyword" and token.content != "case":
+                        # BUG if token is 'case' it doesn't get the next token (which should be '(')
+                        # possible fix: move token = lexAn() inside while
                         break
                 else:
-                    errorHandler("Missing \')\'")
+                    errorHandler("Missing ')' after 'case' condition")
             else:
-                errorHandler("Missing \'(\'")
+                errorHandler("Missing '(' after 'case' keyword")
     else:
-        errorHandler("Keyword: \'case\' exptected")
+        errorHandler("Keyword: 'case' expected inside incase")
     return True
 
 def returnStat():
@@ -480,9 +502,9 @@ def returnStat():
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' after return condition")
     else: 
-        errorHandler("Missing \'(\'")
+        errorHandler("Missing '(' after 'return' keyword")
     
     return True
 
@@ -491,14 +513,15 @@ def callStat():
     ID()
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
+        # BUG should call actualparlist(), not expression()
         expression()
-    
+        # NOTE token ')' is checked in actualparlist(), no need to double check
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' after function/procedure parameters")
     else: 
-        errorHandler("Missing \'(\'")
+        errorHandler("Missing '(' after function/procedure name")
     return True
 
 def printStat():
@@ -506,13 +529,12 @@ def printStat():
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         expression()
-        
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' at the end of 'print' statement")
     else: 
-        errorHandler("Missing \'(\'")
+        errorHandler("Missing '(' after 'print' keyword")
     return True
 
 def inputStat():
@@ -523,9 +545,9 @@ def inputStat():
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
-            errorHandler("Missing \')\'")
+            errorHandler("Missing ')' at the end of 'input' statement")
     else: 
-        errorHandler("Missing \'(\'")
+        errorHandler("Missing '(' after 'input' keyword")
     return True
 
 def formalparitem():
@@ -534,7 +556,7 @@ def formalparitem():
         token = lexAn()
         ID()
     else:
-        errorHandler("Keyword 'in' or 'inout' expected")
+        errorHandler("Keyword 'in' or 'inout' expected before parameter name")
 
 
 # BUG what if we have no parameters for the function?
