@@ -512,6 +512,7 @@ def formalparlist():
         while True:
             formalparitem()
             if token.tkType == "delimiter" and token.content == ",":
+                token = lexAn()
                 continue
             elif token.tkType == "groupSymbol" and token.content == ")":
                 token = lexAn()
@@ -627,7 +628,7 @@ def program():
         ID()
         block()
         if token.tkType == "terminator":
-            print("--- END ---")
+            print("No syntax errors found")
         else:
             errorHandler("Terminator '.' missing")     
     else:
@@ -660,4 +661,4 @@ synAn()
 # print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
 
 sourceFile.close()
-print("program finished")
+# print("program finished")
