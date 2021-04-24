@@ -1,0 +1,17 @@
+program absolutevalue
+
+	declare x;
+	
+	function absvalue(in x)
+	{
+		forcase
+			case (x >= 0) x := x;
+			case (x < 0) x := - x;
+		    default;				# default expression is mandatory according to grammar #
+			;
+	}
+	# m a i n #
+	{
+		input(x);
+		print(absvalue(in x));
+	}.
