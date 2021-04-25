@@ -44,6 +44,12 @@ def merge(par1, par2):
 def makelist(par1):
     return 0
 
+def emptylist():
+    return []
+
+def mergelist(par1, par2):
+    pass
+
 
 # Lexical Analyzer
 def lexAn():
@@ -243,10 +249,13 @@ def INTEGER():
 
 def ID():
     global token
+    name = ""
     if token.tkType == "identifier":
-       token = lexAn()
+        name = token.content
+        token = lexAn()
     else:
         errorHandler(token.content + " is not acceptable as identifier")
+    return name
 
 def optionalSign():
     global token
@@ -256,14 +265,20 @@ def optionalSign():
 
 def actualparitem():
     global token
+    parType = ""
+    par = ""
     if token.tkType == "keyword" and token.content == "in":
+        parType = "CV"
         token = lexAn()
-        expression()
+        par = expression()
     elif token.tkType == "keyword" and token.content == "inout":
+        parType = "REF"
         token = lexAn()
-        ID()
+        par = ID()
     else:
         errorHandler("Keyword 'in' or 'inout' expected before parameter name")
+    
+    genquad("par", par, parType, "_")
 
 
 def actualparlist():
@@ -367,10 +382,14 @@ def factor():
         else:
             errorHandler("Missing ')' at the end of an arithmetic expression")
     else:
-        # NOTE result is function name here, not sure what to do
-        result = token.content
-        ID()
+        # here we handle function calling
+        funcName = ID()
+        # idtail() will create the par quads
         idtail()
+        # result contains the variable that has the return value of the function
+        result = newTemp()
+        genquad("par", result, "RET", "_")
+        genquad("call", funcName, "_", "_")
     return result
         
 
@@ -383,6 +402,7 @@ def term():
         MUL_OP()
         F2result = factor()
         w = newTemp()
+        # BUG fix genquad, must have '/' as well
         genquad("x", F1result, F2result, w)
         F1result = w
     return F1result
@@ -399,6 +419,7 @@ def expression():
         ADD_OP()
         T2result = term()
         w = newTemp()
+        # BUG fix genquad, must have '-' as well
         genquad("+", T1result, T2result, w)
         T1result = w
     return T1result
@@ -433,10 +454,11 @@ def elsepart():
 
 def assignStat():
     global token
-    ID()
+    assignTarget = ID()
     if token.tkType == "assignment" and token.content == ":=":
         token = lexAn()
-        expression()
+        Eresult = expression()
+        genquad(":=", Eresult, "_", assignTarget)
     else:
         errorHandler("Missing assignment symbol ':='")  
 
@@ -445,13 +467,23 @@ def ifStat():
     global token
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        condition()
+        condTF = condition()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
         else:
             errorHandler("Missing ')' after 'if' condition")
+        # if the condition is True, we want the program to jump here
+        backpatch(condTF[0], nextquad())
         statements()
-        elsepart() 
+        # after the if statements are completed, the program must skip the else part
+        # we don't know yet where to jump so we save the jump command and we will backpatch it later
+        ifList = makelist(nextquad())
+        genquad("jump", "_", "_", "_")
+        # if the condition is False, we want the program to jump straight to the else part
+        backpatch(condTF[1], nextquad())
+        elsepart()
+        # now we have generated the code of the else part, so we know where to jump to skip it
+        backpatch(ifList, nextquad)
     else:
         errorHandler("Missing '(' after 'if' keyword")   
 
@@ -460,10 +492,18 @@ def whileStat():
     global token
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        condition()
+        # keep while condition position to come back for the next loop
+        whileQuad = nextquad()
+        condTF = condition()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
+            # we want the program to go here if the while condition is True, so we backpatch the True list
+            backpatch(condTF[0], nextquad())
             statements()
+            # jump back to check again the while condition
+            genquad("jump", "_", "_", whileQuad)
+            # if the condition is False, we want the program to jump here (after the while)
+            backpatch(condTF[1], nextquad())
         else:
             errorHandler("Missing ')' after 'while' condition")
     else:
@@ -472,14 +512,26 @@ def whileStat():
 
 def switchcaseStat():
     global token
+    # we need to keep a list that will contain the exit jumps of all the cases
+    # so that we can backpatch them at the end of the switch
+    exitList = emptylist()
     while token.tkType == "keyword" and token.content == "case":
         token = lexAn()
         if token.tkType == "groupSymbol" and token.content == "(":
             token = lexAn()
-            condition()
+            condTF = condition()
             if token.tkType == "groupSymbol" and token.content == ")":
                 token = lexAn()
+                # if the case condition is True, we want the program to execute case statements
+                backpatch(condTF[0], nextquad())
                 statements()
+                # if we executed the case statements, we want the program to jump at the end of the switch
+                # we don't know where the switch ends yet so we add it to the exit list we made earlier
+                caseExit = makelist(nextquad())
+                genquad("jump", "_", "_", "_")
+                mergelist(exitList, caseExit)
+                # if the case condition is False, we want the program to move to the next case
+                backpatch(condTF[1], nextquad())
             else:
                 errorHandler("Missing ')' after 'case' condition")
         else:
@@ -488,6 +540,8 @@ def switchcaseStat():
     if token.tkType == "keyword" and token.content == "default":
         token = lexAn()
         statements()
+        # now the whole switch is completed and we are at its end, we need to backpatch the exit list here
+        backpatch(exitList, nextquad())
     else:
         errorHandler("Keyword: 'default' expected at the end of switchcase")
 
@@ -535,22 +589,24 @@ def returnStat():
     global token
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        expression()
+        Eresult = expression()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
+            genquad("retv", Eresult, "_", "_")
         else:
             errorHandler("Missing ')' after return condition")
     else: 
         errorHandler("Missing '(' after 'return' keyword")
 
-
+# here we call a procedure (no return statement)
 def callStat():
     global token
-    ID()
+    procName = ID()
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         actualparlist()
         # ')' is checked in actualparlist()
+        genquad("call", procName, "_", "_")
     else: 
         errorHandler("Missing '(' after function/procedure name")
     
@@ -559,9 +615,10 @@ def printStat():
     global token
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        expression()
+        Eresult = expression()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
+            genquad("out", Eresult, "_", "_")
         else:
             errorHandler("Missing ')' at the end of 'print' statement")
     else: 
@@ -572,9 +629,10 @@ def inputStat():
     global token
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        ID()
+        inputTarget = ID()
         if token.tkType == "groupSymbol" and token.content == ")":
             token = lexAn()
+            genquad("inp", inputTarget, "_", "_")
         else:
             errorHandler("Missing ')' at the end of 'input' statement")
     else: 
@@ -628,8 +686,7 @@ def declarations():
 
 def subprogram():    
     global token
-    funcName = token.content
-    ID()
+    funcName = ID()
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
         formalparlist()
@@ -717,8 +774,7 @@ def program():
     global token
     if token.tkType == "keyword" and token.content == "program":
         token = lexAn()
-        programName = token.content
-        ID()
+        programName = ID()
         block(programName, True)
         if token.tkType == "terminator":
             print("No syntax errors found")
