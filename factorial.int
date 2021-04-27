@@ -1,0 +1,14 @@
+1: begin_block factorial _ _
+2: inp x _ _
+3: := 1 _ fact
+4: := 1 _ i
+5: <= i x 7
+6: jump _ _ 12
+7: * fact i T_0
+8: := T_0 _ fact
+9: + i 1 T_1
+10: := T_1 _ i
+11: jump _ _ 5
+12: out fact _ _
+13: halt _ _ _
+14: end_block factorial _ _

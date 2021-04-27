@@ -1,8 +1,6 @@
 # Giorgos Papadatos 3306 cs03306
 # Athanasios Papias 3314 cs03314
 
-# Thanasi check oti einai swsta ta apo panw
-
 import sys
 import string
 import re
@@ -12,6 +10,10 @@ numbers = string.digits
 keywords = ["program","declare","if","else","while","switchcase","forcase","incase","case","default",
             "not","and","or","function","procedure","call","return","in","inout","input","print"]
 lineCounter = 1
+
+quadList = [] # list with created quads
+quadNum = 0   # current quad label
+tempNum = 0   # current temporary variable number
 
 # Token class used by lexical analyzer
 class Token:
@@ -26,29 +28,36 @@ def errorHandler(message):
     sys.exit(exitMessage)
 
 
-def genquad(par1, par2, par3, par4):
-    pass
+def genquad(op, x, y, z):
+    global quadList
+    global quadNum
+    quadList.append([op,x,y,z])
+    quadNum += 1
 
 def newTemp():
-    return 0
+    global tempNum
+    temp = "T_" + str(tempNum)
+    tempNum += 1
+    return temp
 
-def backpatch(par1, par2):
-    pass
+def backpatch(list1, z):
+    global quadList
+    for label in list1:
+        # NOTE might need label-1
+        quadList[label-1][3] = z
 
 def nextquad():
-    return 0
+    global quadNum
+    return quadNum + 1
 
-def merge(par1, par2):
-    return (0,0)
+def merge(list1, list2):
+    return list1 + list2
 
-def makelist(par1):
-    return 0
+def makelist(x):
+    return [x]
 
 def emptylist():
     return []
-
-def mergelist(par1, par2):
-    pass
 
 
 # Lexical Analyzer
@@ -310,10 +319,9 @@ def actualparlist():
 
 def idtail():
     global token
-    if token.tkType == "groupSymbol" and token.content == "(":
-        token = lexAn()
-        actualparlist()
-        # ')' is checked in actualparlist()
+    # '(' is checked in caller (factor())
+    actualparlist()
+    # ')' is checked in actualparlist()
 
  
 # bfactTF is a list that contains the True and False lists for the whole boolfactor
@@ -321,7 +329,7 @@ def idtail():
 # we get the results with the return values, not with parameters
 def boolfactor():
     global token
-    bfactTF = []
+    bfactTF = [[],[]]
     if token.tkType == "keyword" and token.content == "not":
         token = lexAn()
         if token.tkType == "groupSymbol" and token.content == "[":
@@ -392,14 +400,22 @@ def factor():
         else:
             errorHandler("Missing ')' at the end of an arithmetic expression")
     else:
+        # ID will be a variable or a function
+        # if it is a variable, we want to return it as the factor result
+        # if it is a function, it will be followed by a '('
+        result = ID()
         # here we handle function calling (has return statement)
-        funcName = ID()
-        # idtail() will create the par quads
-        idtail()
-        # result contains the variable that has the return value of the function
-        result = newTemp()
-        genquad("par", result, "RET", "_")
-        genquad("call", funcName, "_", "_")
+        if token.tkType == "groupSymbol" and token.content == "(":
+            token = lexAn()
+            # the ID we saved as 'result' is the function name
+            funcName = result
+            # idtail() will create the par quads
+            idtail()
+            # result contains the variable that has the return value of the function
+            result = newTemp()
+            genquad("par", result, "RET", "_")
+            genquad("call", funcName, "_", "_")
+
     return result
         
 
@@ -504,7 +520,7 @@ def ifStat():
         backpatch(condTF[1], nextquad())
         elsepart()
         # now we have generated the code of the else part, so we know where to jump to skip it
-        backpatch(ifList, nextquad)
+        backpatch(ifList, nextquad())
     else:
         errorHandler("Missing '(' after 'if' keyword")   
 
@@ -550,7 +566,7 @@ def switchcaseStat():
                 # we don't know where the switch ends yet so we add it to the exit list we made earlier
                 caseExit = makelist(nextquad())
                 genquad("jump", "_", "_", "_")
-                mergelist(exitList, caseExit)
+                exitList = merge(exitList, caseExit)
                 # if the case condition is False, we want the program to move to the next case
                 backpatch(condTF[1], nextquad())
             else:
@@ -849,6 +865,8 @@ else:
     if sys.argv[1][-3:] != ".ci":
         sys.exit("Error: Source file must be a C-imple file (.ci)")
 
+fileName = sys.argv[1][:-3]
+
 token = lexAn()
 synAn()
 # while token.tkType != "terminator":
@@ -857,4 +875,14 @@ synAn()
 # print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
 
 sourceFile.close()
+
+try:
+    intFile = open(fileName + ".int", "w")
+except:
+    sys.exit("Error occured in intermediate-code file creation")
+for num, quad in enumerate(quadList):
+    label = str(num + 1) + ": "
+    intFile.write(label + str(quad[0]) + " " + str(quad[1]) + " " + str(quad[2]) + " " + str(quad[3]) + "\n")
+
+intFile.close()
 # print("program finished")

@@ -1,0 +1,22 @@
+# in this example T_0 will be the incase flag #
+
+program checkInCase
+declare x,y;
+#main#
+{
+	input(x);
+	incase
+		case(y<=0)
+		{
+			return(y);
+			y:=x*2;
+		}
+		case(x>0)
+		{
+			print(y*3);
+			y:=x*2;
+		}
+    ;
+	
+	return(x);
+}.

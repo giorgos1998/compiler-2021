@@ -1,0 +1,13 @@
+1: begin_block countDigits _ _
+2: inp x _ _
+3: := 0 _ count
+4: > x 0 6
+5: jump _ _ 11
+6: / x 10 T_0
+7: := T_0 _ x
+8: + count 1 T_1
+9: := T_1 _ count
+10: jump _ _ 4
+11: out count _ _
+12: halt _ _ _
+13: end_block countDigits _ _
