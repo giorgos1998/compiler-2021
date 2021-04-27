@@ -924,8 +924,6 @@ for num, quad in enumerate(quadList):
         lineContent += "\n"
         # continue will skip the rest of the for loop, so we need to append the label here
         cList.append(lineContent)
-        if qType == "halt":
-            break
         continue
     
     elif qType == ":=":
@@ -953,6 +951,10 @@ for num, quad in enumerate(quadList):
     elif qType == "out":
         lineContent += ("printf(\"%d\"," + op1 + "); //(" + quadStr + ")\n")
     
+    elif qType == "halt":
+        lineContent += "printf(\"Execution finished\");\n"
+        break
+
     else:
         hasFunction = True
         print("Source code contains function/method other than main, C file will not be created")
