@@ -933,6 +933,13 @@ for num, quad in enumerate(quadList):
         lineContent += (resTarget + "=" + op1 + qType + op2 + "; //(" + quadStr + ")\n")
 
     elif qType in "<><=>=":
+
+        # fix different operators
+        if qType == "=":
+            qType = "=="
+        elif qType == "<>":
+            qType = "!="
+        
         lineContent += ("if (" + op1 + qType + op2 + ") goto L_" + resTarget + "; //(" + quadStr + ")\n")
 
     elif qType == "jump":
