@@ -920,7 +920,7 @@ for num, quad in enumerate(quadList):
 
     quadStr = qType + " " + op1 + " " + op2 + " " + resTarget
 
-    if qType == "begin_block" or qType == "end_block" or qType == "halt":
+    if qType == "begin_block" or qType == "end_block":
         lineContent += "\n"
         # continue will skip the rest of the for loop, so we need to append the label here
         cList.append(lineContent)
@@ -933,6 +933,13 @@ for num, quad in enumerate(quadList):
         lineContent += (resTarget + "=" + op1 + qType + op2 + "; //(" + quadStr + ")\n")
 
     elif qType in "<><=>=":
+
+        # fix different operators
+        if qType == "=":
+            qType = "=="
+        elif qType == "<>":
+            qType = "!="
+        
         lineContent += ("if (" + op1 + qType + op2 + ") goto L_" + resTarget + "; //(" + quadStr + ")\n")
 
     elif qType == "jump":
@@ -944,6 +951,11 @@ for num, quad in enumerate(quadList):
     elif qType == "out":
         lineContent += ("printf(\"%d\"," + op1 + "); //(" + quadStr + ")\n")
     
+    elif qType == "halt":
+        lineContent += "printf(\"\\nExecution finished\\n\");\n"
+        cList.append(lineContent)
+        break
+
     else:
         hasFunction = True
         print("Source code contains function/method other than main, C file will not be created")
