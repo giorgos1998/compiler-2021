@@ -284,7 +284,7 @@ def optionalSign():
     return op
        
 
-def actualparitem():
+def actualparitem(parList):
     global token
     parType = ""
     par = ""
@@ -299,16 +299,17 @@ def actualparitem():
     else:
         errorHandler("Keyword 'in' or 'inout' expected before parameter name")
     
-    genquad("par", par, parType, "_")
+    parList.append((par, parType))
+    # genquad("par", par, parType, "_")
 
 
-def actualparlist():
+def actualparlist(parList):
     global token
     if token.tkType == "groupSymbol" and token.content == ")":
         token = lexAn()
     else:
         while True:
-            actualparitem()
+            actualparitem(parList)
             if token.tkType == "delimiter" and token.content == ",":
                 token = lexAn()
             elif token.tkType == "groupSymbol" and token.content == ")":
@@ -317,10 +318,10 @@ def actualparlist():
             else: 
                 errorHandler("Missing ')' after function/procedure parameters")
 
-def idtail():
+def idtail(parList):
     global token
     # '(' is checked in caller (factor())
-    actualparlist()
+    actualparlist(parList)
     # ')' is checked in actualparlist()
 
  
@@ -410,9 +411,13 @@ def factor():
             # the ID we saved as 'result' is the function name
             funcName = result
             # idtail() will create the par quads
-            idtail()
+            # parList holds needed parameter info to generate quads in proper order
+            parList = []
+            idtail(parList)
             # result contains the variable that has the return value of the function
             result = newTemp()
+            for param in parList:
+                genquad("par", param[0], param[1], "_")
             genquad("par", result, "RET", "_")
             genquad("call", funcName, "_", "_")
 
@@ -664,8 +669,12 @@ def callStat():
     procName = ID()
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        actualparlist()
+        # parList holds needed parameter info to generate quads in proper order
+        parList = []
+        actualparlist(parList)
         # ')' is checked in actualparlist()
+        for param in parList:
+            genquad("par", param[0], param[1], "_")
         genquad("call", procName, "_", "_")
     else: 
         errorHandler("Missing '(' after function/procedure name")

@@ -10,11 +10,11 @@
 10: par b CV _
 11: par T_0 RET _
 12: call max _ _
-13: par T_0 CV _
-14: par c CV _
-15: par d CV _
-16: par T_1 RET _
-17: call max _ _
+13: par c CV _
+14: par d CV _
+15: par T_1 RET _
+16: call max _ _
+17: par T_0 CV _
 18: par T_1 CV _
 19: par T_2 RET _
 20: call max _ _
