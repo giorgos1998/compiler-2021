@@ -920,7 +920,7 @@ for num, quad in enumerate(quadList):
 
     quadStr = qType + " " + op1 + " " + op2 + " " + resTarget
 
-    if qType == "begin_block" or qType == "end_block":
+    if qType == "begin_block":
         lineContent += "\n"
         # continue will skip the rest of the for loop, so we need to append the label here
         cList.append(lineContent)
@@ -949,10 +949,12 @@ for num, quad in enumerate(quadList):
         lineContent += ("scanf(\"%d\",&" + op1 + "); //(" + quadStr + ")\n")
 
     elif qType == "out":
-        lineContent += ("printf(\"%d\"," + op1 + "); //(" + quadStr + ")\n")
+        lineContent += ("printf(\"%d\\n\"," + op1 + "); //(" + quadStr + ")\n")
     
     elif qType == "halt":
-        lineContent += "printf(\"\\nExecution finished\\n\");\n"
+        # this last print is required, gcc throws error when last label is empty
+        lineContent += "printf(\"Execution finished\\n\");\n"
+        # break will skip the rest of the for loop, so we need to append the line here
         cList.append(lineContent)
         break
 
