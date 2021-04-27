@@ -924,6 +924,8 @@ for num, quad in enumerate(quadList):
         lineContent += "\n"
         # continue will skip the rest of the for loop, so we need to append the label here
         cList.append(lineContent)
+        if qType == "halt":
+            break
         continue
     
     elif qType == ":=":
