@@ -920,7 +920,7 @@ for num, quad in enumerate(quadList):
 
     quadStr = qType + " " + op1 + " " + op2 + " " + resTarget
 
-    if qType == "begin_block" or qType == "end_block" or qType == "halt":
+    if qType == "begin_block" or qType == "end_block":
         lineContent += "\n"
         # continue will skip the rest of the for loop, so we need to append the label here
         cList.append(lineContent)
@@ -953,6 +953,7 @@ for num, quad in enumerate(quadList):
     
     elif qType == "halt":
         lineContent += "printf(\"Execution finished\");\n"
+        cList.append(lineContent)
         break
 
     else:
