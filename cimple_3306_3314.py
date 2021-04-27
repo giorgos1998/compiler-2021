@@ -952,7 +952,7 @@ for num, quad in enumerate(quadList):
         lineContent += ("printf(\"%d\"," + op1 + "); //(" + quadStr + ")\n")
     
     elif qType == "halt":
-        lineContent += "printf(\"Execution finished\");\n"
+        lineContent += "printf(\"\\nExecution finished\\n\");\n"
         cList.append(lineContent)
         break
 
