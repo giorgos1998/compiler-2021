@@ -300,7 +300,6 @@ def actualparitem(parList):
         errorHandler("Keyword 'in' or 'inout' expected before parameter name")
     
     parList.append((par, parType))
-    # genquad("par", par, parType, "_")
 
 
 def actualparlist(parList):
@@ -410,7 +409,7 @@ def factor():
             token = lexAn()
             # the ID we saved as 'result' is the function name
             funcName = result
-            # idtail() will create the par quads
+            # idtail() will get parameters and save their info in parList
             # parList holds needed parameter info to generate quads in proper order
             parList = []
             idtail(parList)
@@ -861,7 +860,7 @@ def synAn():
 
 ################################### Main ###################################
 
-# Gets file to compile
+########## Gets file to compile ##########
 try:
     sourceFile = open(sys.argv[1])
 except IndexError:
@@ -876,8 +875,10 @@ else:
 
 fileName = sys.argv[1][:-3]
 
+# prepare 1st token for syntax analyzer
 token = lexAn()
 synAn()
+
 # while token.tkType != "terminator":
 #     print("LINE: " + ("%-10s" % lineCounter) + "TYPE: " + ("%-17s" % token.tkType) + "TOKEN:", token.content)
 #     token = lexAn()
@@ -885,6 +886,7 @@ synAn()
 
 sourceFile.close()
 
+########## create intermediate-code file (.int) ##########
 try:
     intFile = open(fileName + ".int", "w")
 except:
@@ -894,4 +896,86 @@ for num, quad in enumerate(quadList):
     intFile.write(label + str(quad[0]) + " " + str(quad[1]) + " " + str(quad[2]) + " " + str(quad[3]) + "\n")
 
 intFile.close()
-# print("program finished")
+print("Generated '" + fileName + ".int" + "' successfully")
+
+########## create C code file (if source code only has a main function) ##########
+
+# a list with all the program variables (including temporary ones)
+variableList = []
+# a list with all the C commands
+cList = []
+# a flag to mark whether the program contains another function or not
+hasFunction = False
+
+for num, quad in enumerate(quadList):
+    
+    lineContent = ""
+    label = "L_" + str(num + 1) + ": "
+    lineContent += label
+    
+    qType = str(quad[0])
+    op1 = str(quad[1])
+    op2 = str(quad[2])
+    resTarget = str(quad[3])
+
+    quadStr = qType + " " + op1 + " " + op2 + " " + resTarget
+
+    if qType == "begin_block" or qType == "end_block" or qType == "halt":
+        lineContent += "\n"
+        # continue will skip the rest of the for loop, so we need to append the label here
+        cList.append(lineContent)
+        continue
+    
+    elif qType == ":=":
+        lineContent += (resTarget + "=" + op1 + "; //(" + quadStr + ")\n")
+    
+    elif qType in "+-*/":
+        lineContent += (resTarget + "=" + op1 + qType + op2 + "; //(" + quadStr + ")\n")
+
+    elif qType in "<><=>=":
+        lineContent += ("if (" + op1 + qType + op2 + ") goto L_" + resTarget + "; //(" + quadStr + ")\n")
+
+    elif qType == "jump":
+        lineContent += ("goto L_" + resTarget + "; //(" + quadStr + ")\n")
+
+    elif qType == "inp":
+        lineContent += ("scanf(\"%d\",&" + op1 + "); //(" + quadStr + ")\n")
+
+    elif qType == "out":
+        lineContent += ("printf(\"%d\"," + op1 + "); //(" + quadStr + ")\n")
+    
+    else:
+        hasFunction = True
+        print("Source code contains function/method other than main, C file will not be created")
+        break
+
+    # add generated line to the list
+    cList.append(lineContent)
+
+    # add new variables to the list (variables always start with a letter)
+    if op1[0] in letters and op1 not in variableList:
+        variableList.append(op1)
+    
+    elif op2[0] in letters and op2 not in variableList:
+        variableList.append(op2)
+
+    elif resTarget[0] in letters and resTarget not in variableList:
+        variableList.append(resTarget)
+
+
+if hasFunction == False:
+
+    try:
+        cFile = open(fileName + ".c", "w")
+    except:
+        sys.exit("Error occured in C-code file creation")
+
+    cFile.write("#include <stdio.h>\n\n")
+    cFile.write("int main()\n{\n")
+    cFile.write("\tint " + ",".join(variableList) + ";\n")
+    for line in cList:
+        cFile.write("\t" + line)
+    cFile.write("}")
+
+    cFile.close()
+    print("Generated '" + fileName + ".c" + "' successfully")
