@@ -11,9 +11,12 @@ keywords = ["program","declare","if","else","while","switchcase","forcase","inca
             "not","and","or","function","procedure","call","return","in","inout","input","print"]
 lineCounter = 1
 
-quadList = [] # list with created quads
-quadNum = 0   # current quad label
-tempNum = 0   # current temporary variable number
+quadList = []       # list with created quads
+quadNum = 0         # current quad label
+tempNum = 0         # current temporary variable number
+
+symbolTable = []    # list with active scopes (Symbol Table)
+scopeDepth = 0      # current maximum nesting level in symbol table
 
 # Token class used by lexical analyzer
 class Token:
@@ -21,6 +24,53 @@ class Token:
         self.tkType = tkType
         self.content = content
         self.line = line
+
+# Scope class used in symbol table
+class Scope:
+    def __init__(self, nestingLevel):
+        self.entities = []
+        self.nestingLevel = nestingLevel
+
+# Variable entity class used in scopes of symbol table
+class variableEntity:
+    def __init__(self, name, offset):
+        self.name = name
+        self.offset = offset
+
+# Variable entity class used in scopes of symbol table
+class functionEntity:
+    def __init__(self, name):
+        self.name = name
+        self.arguments = []
+        self.framelength = -1
+
+# parameter entity class used in scopes of symbol table
+class parameterEntity:
+    def __init__(self, name, mode, offset):
+        self.name = name
+        self.mode = mode
+        self.offset = offset
+
+# Argument class used in function/procedure entities in symbol table
+class Argument:
+    def __init__(self, mode):
+        self.mode = mode
+
+
+########## Syntax Table functions ##########
+
+# Creates a new scope, increases current nesting level and adds scope to the syntax table
+def addScope():
+    scopeDepth += 1
+    symbolTable.append(Scope(scopeDepth))
+
+# Removes last scope from syntax table and decreases current nesting level
+def removeScope():
+    scopeDepth -= 1
+    symbolTable.pop()
+
+def addEntity(entity):
+    symbolTable[-1].append(entity)
 
 # Displays error message to user with required info
 def errorHandler(message):
