@@ -137,9 +137,16 @@ def addEntity(entity, entityType):
     # print(entity.ToString())
 
 
-# TODO
+# Searches for given symbol in symbol table and returns how many levels away is the symbol
 def searchSymbolTable(symbol):
-    pass
+    global scopeDepth
+    for i in range(len(symbolTable)-1, -1, -1):
+        scope = symbolTable[i]
+        for entity in scope.entities:
+            if entity.name == symbol:
+                return scopeDepth - scope.nestingLevel
+    errorHandler("Cannot find '" + symbol + "', variable or function not declared")
+
 
 
 ########## Error handler function ##########
