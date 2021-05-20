@@ -19,6 +19,9 @@ symbolTable = []    # list with active scopes (Symbol Table)
 scopeDepth = 0      # current maximum nesting level in symbol table
 mainFrameSize = 0   # frame size of the main function
 
+transQuad = 0       # current quad for translation
+assemblyList = []   # list with assembly instructions
+
 # Token class used by lexical analyzer
 class Token:
     def __init__(self, tkType, content, line):
@@ -54,10 +57,11 @@ class functionEntity:
         self.arguments = []
         self.framelength = -1
         self.type = type
+        self.startQuad = -1
 
     def ToString(self):
-        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments)
-        result += "\nFRAMELENGTH: " + str(self.framelength) + "\nTYPE: " + self.type + "\n"
+        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments) + "\nFRAMELENGTH: "
+        result += str(self.framelength) + "\nTYPE: " + self.type + "\nSTART: L" + str(self.startQuad) + "\n"
         return result
 
 # parameter entity class used in scopes of symbol table
@@ -191,6 +195,123 @@ def makelist(x):
 
 def emptylist():
     return []
+
+
+########## Assembly code functions ##########
+
+# Translates quads of current code block
+def translateBlock(isMain):
+    global transQuad
+    for i in range(transQuad, len(quadList)-1):
+        quad = quadList[i]
+        
+        labelBlock = ""
+        label = "L" + str(i + 1) + ":"
+        labelBlock += label
+    
+        qType = str(quad[0])
+        op1 = str(quad[1])
+        op2 = str(quad[2])
+        resTarget = str(quad[3])
+
+        if qType == "begin_block":
+            if isMain:
+                # add main label
+                assemblyList.append("Lmain:\n")
+                # make enough space in stack for main
+                labelBlock += "\t\t" + "addi $sp, $sp, " + str(symbolTable[-1].size) + "\n"
+                # save at $s0 the start of main's frame to get easy access to global variables
+                labelBlock += "\t\t" + "move $s0, $sp" + "\n"
+            else:
+                # store return address
+                labelBlock += "\t\t" + "sw $ra, -0($sp)" + "\n"
+        
+        elif qType == "end_block":
+            if not isMain:
+                # load return address to $ra and return
+                labelBlock += "\t\t" + "lw $ra, -0($sp)" + "\n"
+                labelBlock += "\t\t" + "jr $ra" + "\n"
+
+        elif qType == "jump":
+            labelBlock += "\t\t" + "b L" + resTarget + "\n"
+
+        elif qType == "inp":
+            labelBlock += "\t\t" + "li $v0, 5" + "\n"
+            labelBlock += "\t\t" + "syscall" + "\n"
+            labelBlock += "\t\t" + storerv("$v0", op1) + "\n"       # NOTE should change
+
+        elif qType == "out":
+            labelBlock += "\t\t" + "li $v0, 1" + "\n"
+            labelBlock += "\t\t" + loadvr(op1, "$a0") + "\n"        # NOTE should change
+            labelBlock += "\t\t" + "syscall" + "\n"
+
+        elif qType == "halt":
+            labelBlock += "\t\t" + "li $v0, 10" + "\n"
+            labelBlock += "\t\t" + "syscall" + "\n"
+
+        elif qType == "=":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "beq $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == "<":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "blt $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == ">":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "bgt $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == "<>":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "bne $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == "<=":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "ble $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == ">=":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "bge $t1, $t2, L" + resTarget + "\n"
+
+        elif qType == ":=":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+
+        elif qType == "+":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "add $t1, $t1, $t2" + "\n"
+            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+
+        elif qType == "-":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "sub $t1, $t1, $t2" + "\n"
+            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+
+        elif qType == "*":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "mul $t1, $t1, $t2" + "\n"
+            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+
+        elif qType == "/":
+            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += "\t\t" + "div $t1, $t1, $t2" + "\n"
+            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+
+        # TODO function handling (ret, par, call)
+
+        assemblyList.append(labelBlock)
+
+
 
 
 # Lexical Analyzer
@@ -990,12 +1111,20 @@ def block(programName, isMain):
     global token
     declarations()
     subprograms()
+    if isMain:
+        # TODO add Lmain label
+        pass
+    else:
+        # the function entity is not on the last scope at this point, but on the previous one
+        # also, it is the last entity in that scope so far 
+        symbolTable[-2].entities[-1].startQuad = nextquad()
     genquad("begin_block", programName, "_", "_")
     statements()
     # block() is common for main and other functions, so we need isMain to know if we must add 'halt'
     if isMain:
         genquad("halt", "_", "_", "_")
     genquad("end_block", programName, "_", "_")
+    translateBlock(isMain)
     # function ended, remove it's scope from the symbol table
     removeScope()
 
@@ -1007,6 +1136,8 @@ def program():
         programName = ID()
         # add scope to symbol table for main
         addScope()
+        # add initial jump to main in assembly
+        assemblyList.append("L0:\t\t" + "b Lmain\n")
         block(programName, True)
         if token.tkType == "terminator":
             print("No syntax errors found")
