@@ -49,13 +49,15 @@ class variableEntity:
 
 # Variable entity class used in scopes of symbol table
 class functionEntity:
-    def __init__(self, name):
+    def __init__(self, name, type):
         self.name = name
         self.arguments = []
         self.framelength = -1
+        self.type = type
 
     def ToString(self):
-        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments) + "\nFRAMELENGTH: " + str(self.framelength) + "\n"
+        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments)
+        result += "\nFRAMELENGTH: " + str(self.framelength) + "\nTYPE: " + self.type + "\n"
         return result
 
 # parameter entity class used in scopes of symbol table
@@ -84,7 +86,7 @@ def printSymbolTable():
             elif type(entity) is parameterEntity:
                 line += str(entity.offset) + "/" + entity.mode + "|"
             else:
-                line += str(entity.framelength) + "|"
+                line += str(entity.framelength) + "/" + entity.type + "|"
                 for argument in entity.arguments:
                     line += "<" + argument + ">"
         
@@ -892,11 +894,11 @@ def declarations():
             errorHandler("Missing ';' at the end of variable declaration")
         
 
-def subprogram():    
+def subprogram(funcType):    
     global token
     funcName = ID()
     # create and add a function entity to the last scope
-    entity = functionEntity(funcName)
+    entity = functionEntity(funcName, funcType)
     addEntity(entity, "func")
     # add a new scope for the function
     addScope()
@@ -969,8 +971,12 @@ def statements():
 def subprograms():
     global token
     while (token.tkType == "keyword" and (token.content == "function" or token.content == "procedure")) :
-        token=lexAn()
-        subprogram()
+        if token.content == "function":
+            token=lexAn()
+            subprogram("func")
+        else:
+            token=lexAn()
+            subprogram("proc")
         
         
 def block(programName, isMain):
