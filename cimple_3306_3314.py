@@ -17,6 +17,7 @@ tempNum = 0         # current temporary variable number
 
 symbolTable = []    # list with active scopes (Symbol Table)
 scopeDepth = 0      # current maximum nesting level in symbol table
+mainFrameSize = 0   # frame size of the main function
 
 # Token class used by lexical analyzer
 class Token:
@@ -30,12 +31,21 @@ class Scope:
     def __init__(self, nestingLevel):
         self.entities = []
         self.nestingLevel = nestingLevel
+        self.size = 12
+
+    def ToString(self):
+        result = "LEVEL: " + str(self.nestingLevel) + "\nSIZE: " + str(self.size) + "\n"
+        return result
 
 # Variable entity class used in scopes of symbol table
 class variableEntity:
-    def __init__(self, name, offset):
+    def __init__(self, name):
         self.name = name
-        self.offset = offset
+        self.offset = -1
+
+    def ToString(self):
+        result = "TYPE: variable\nNAME: " + self.name + "\nOFFSET: " + str(self.offset) + "\n"
+        return result
 
 # Variable entity class used in scopes of symbol table
 class functionEntity:
@@ -44,39 +54,101 @@ class functionEntity:
         self.arguments = []
         self.framelength = -1
 
+    def ToString(self):
+        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments) + "\nFRAMELENGTH: " + str(self.framelength) + "\n"
+        return result
+
 # parameter entity class used in scopes of symbol table
 class parameterEntity:
-    def __init__(self, name, mode, offset):
+    def __init__(self, name, mode):
         self.name = name
         self.mode = mode
-        self.offset = offset
+        self.offset = -1
 
-# Argument class used in function/procedure entities in symbol table
-class Argument:
-    def __init__(self, mode):
-        self.mode = mode
+    def ToString(self):
+        result = "TYPE: parameter\nNAME: " + self.name + "\nMODE: " + self.mode + "\nOFFSET: " + str(self.offset) + "\n"
+        return result
 
 
 ########## Syntax Table functions ##########
 
-# Creates a new scope, increases current nesting level and adds scope to the syntax table
+def printSymbolTable():
+    for i in range(len(symbolTable)-1, -1, -1):
+        scope = symbolTable[i]
+        line = "(" + str(scope.nestingLevel) + "/" + str(scope.size) + ")"
+
+        for entity in scope.entities:
+            line += " <-- |" + entity.name + "/"
+            if type(entity) is variableEntity:
+                line += str(entity.offset) + "|"
+            elif type(entity) is parameterEntity:
+                line += str(entity.offset) + "/" + entity.mode + "|"
+            else:
+                line += str(entity.framelength) + "|"
+                for argument in entity.arguments:
+                    line += "<" + argument + ">"
+        
+        print(line)
+        if i != 0:
+            print("  |")
+            print("  v")
+        else:
+            print()
+
+# Creates a new scope, increases current nesting level and adds scope to the symbol table
 def addScope():
+    global scopeDepth
     scopeDepth += 1
-    symbolTable.append(Scope(scopeDepth))
+    scope = Scope(scopeDepth)
+    symbolTable.append(scope)
+    # print("------ ADDED SCOPE ------")
+    # print(scope.ToString())
 
-# Removes last scope from syntax table and decreases current nesting level
+# Removes last scope from symbol table and decreases current nesting level
 def removeScope():
+    global scopeDepth
+    global mainFrameSize
+    print("###### SYMBOL TABLE BEFORE REMOVAL ######\n")
+    printSymbolTable()
     scopeDepth -= 1
-    symbolTable.pop()
+    scopeSize = symbolTable.pop().size
+    if scopeDepth == 0:
+        mainFrameSize = scopeSize
+    else:
+        symbolTable[-1].entities[-1].framelength = scopeSize
+    # print("------ REMOVED SCOPE ------")
+    # print("Current depth:", scopeDepth, "\n")
+    print("###### SYMBOL TABLE AFTER REMOVAL ######\n")
+    printSymbolTable()
+    if scopeDepth == 0:
+        print("Symbol table is empty")
+        print("Main frame size:", mainFrameSize, "\n")
 
-def addEntity(entity):
-    symbolTable[-1].append(entity)
+# Adds given entity to the last scope (entity types: var, func, par)
+def addEntity(entity, entityType):
+    topScope = symbolTable[-1]
+    if entityType != "func":
+        entity.offset = topScope.size
+        topScope.size += 4
+    topScope.entities.append(entity)
+    # print("------ ADDED ENTITY ------")
+    # print(entity.ToString())
+
+
+# TODO
+def searchSymbolTable(symbol):
+    pass
+
+
+########## Error handler function ##########
 
 # Displays error message to user with required info
 def errorHandler(message):
     exitMessage = "ERROR at line " + str(lineCounter) + ": " + message
     sys.exit(exitMessage)
 
+
+########## Intermediate code functions ##########
 
 def genquad(op, x, y, z):
     global quadList
@@ -88,6 +160,8 @@ def newTemp():
     global tempNum
     temp = "T_" + str(tempNum)
     tempNum += 1
+    # add temp variable entity to scope
+    addEntity(variableEntity(temp), "var")
     return temp
 
 def backpatch(list1, z):
@@ -759,9 +833,18 @@ def inputStat():
 
 def formalparitem():
     global token
-    if token.tkType == "keyword" and (token.content == "in" or token.content == "inout"):
+    if token.tkType == "keyword" and token.content == "in":
         token = lexAn()
-        ID()
+        parName = ID()
+        # add parameter entity to last scope and return parameter mode
+        addEntity(parameterEntity(parName, "CV"), "par")
+        return "IN"
+    elif token.tkType == "keyword" and token.content == "inout":
+        token = lexAn()
+        parName = ID()
+        # add parameter entity to last scope and return parameter mode
+        addEntity(parameterEntity(parName, "REF"), "par")
+        return "IO"
     else:
         errorHandler("Keyword 'in' or 'inout' expected before parameter name")
 
@@ -770,9 +853,12 @@ def formalparlist():
     global token
     if token.tkType == "groupSymbol" and token.content == ")":
         token = lexAn()
+        return []
     else:
+        # argList stores all parameter modes (arguments) for this function
+        argList = []
         while True:
-            formalparitem()
+            argList.append(formalparitem())
             if token.tkType == "delimiter" and token.content == ",":
                 token = lexAn()
                 continue
@@ -781,14 +867,18 @@ def formalparlist():
                 break
             else: 
                 errorHandler("Missing ')' at function/procedure declaration")
+        return argList
 
 
 def varlist():
     global token
-    ID()
+    varName = ID()
+    addEntity(variableEntity(varName), "var")
     while token.tkType == "delimiter" and token.content == ",":
         token = lexAn()
-        ID()
+        varName = ID()
+        addEntity(variableEntity(varName), "var")
+
 
     
 def declarations():
@@ -805,9 +895,15 @@ def declarations():
 def subprogram():    
     global token
     funcName = ID()
+    # create and add a function entity to the last scope
+    entity = functionEntity(funcName)
+    addEntity(entity, "func")
+    # add a new scope for the function
+    addScope()
     if token.tkType == "groupSymbol" and token.content == "(":
         token = lexAn()
-        formalparlist()
+        # get parameter types and pass them to the function entity
+        entity.arguments = formalparlist()
         # ')' is checked in formalparlist()
         block(funcName, False)
     else:
@@ -887,6 +983,8 @@ def block(programName, isMain):
     if isMain:
         genquad("halt", "_", "_", "_")
     genquad("end_block", programName, "_", "_")
+    # function ended, remove it's scope from the symbol table
+    removeScope()
 
 
 def program():
@@ -894,6 +992,8 @@ def program():
     if token.tkType == "keyword" and token.content == "program":
         token = lexAn()
         programName = ID()
+        # add scope to symbol table for main
+        addScope()
         block(programName, True)
         if token.tkType == "terminator":
             print("No syntax errors found")
