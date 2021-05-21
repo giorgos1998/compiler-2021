@@ -19,6 +19,9 @@ symbolTable = []    # list with active scopes (Symbol Table)
 scopeDepth = 0      # current maximum nesting level in symbol table
 mainFrameSize = 0   # frame size of the main function
 
+transQuad = 0       # current quad for translation
+assemblyList = []   # list with assembly instructions
+
 
 # Token class used by lexical analyzer
 class Token:
