@@ -21,6 +21,9 @@ mainFrameSize = 0   # frame size of the main function
 
 transQuad = 0       # current quad for translation
 assemblyList = []   # list with assembly instructions
+tabs = "\t\t\t"     # to keep assembly code in line
+
+printableTable = [] # stores symbol table text to write in file
 
 
 # Token class used by lexical analyzer
@@ -76,77 +79,6 @@ class parameterEntity:
         return result
 
 
-def gnlvcode(v):
-    
-    x = "\t\t"+"lw $t0,-4($sp)"+"\n"
-    distance = searchSymbolTable(v)
-    while distance[0] !=0:
-        x+="\t\t"+"lw $t0,-4($t0)"+"\n"
-        distance[0] -=4
-
-    x+="\t\t"+"addi $t0,$t0,-"+ distance[1].offset +"\n"
-    return x
-    
-
-
-
-def loadvr(v,r):
-    x = ""
-    ldist = searchSymbolTable(v)
-
-    if ldist[0] == scopeDepth :
-        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-
-    elif ldist[0] == 0 and ldist[1].mode == "CV":
-        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-        
-    elif ldist[0] == 0 and ldist[1].mode == "REF":
-        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
-
-    elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "CV":
-        x+= gnlvcode(v)
-        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
-
-    elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "REF":
-        x+= gnlvcode(v)
-        x+= "\t\t"+"lw $t0,($t0)"+"\n"
-        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
-
-    return x
-    
-
-
-def storerv(r,v):
-    x = ""
-    sdist = searchSymbolTable(v)
-
-    if sdist[0] == scopeDepth:
-        x+= "\t\t" + "sw $tr,-offset($s0)" + "\n"
-
-    elif sdist[0] == 0 and sdist[1].mode == "CV":
-        x+= "\t\t" + "sw $"+r+","+ sdist[1].offset + "\n"
-
-    elif sdist[0] == 0 and sdist[1].mode == "REF":
-        x+= "\t\t" + "lw $t0,"+ sdist[1].offset  + "\n"
-        
-        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
-        
-    elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "CV":
-        x+=gnlvcode(v)
-        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
-
-    elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "REF":
-        x+= gnlvcode(v)   
-        x+= "\t\t" + "lw $t0,($t0)" + "\n"
-        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
-
-    return x
-   
-    
-
-
-
 ########## Syntax Table functions ##########
 
 def printSymbolTable():
@@ -165,12 +97,16 @@ def printSymbolTable():
                 for argument in entity.arguments:
                     line += "<" + argument + ">"
         
-        print(line)
+        # print(line)
+        line += "\n"
         if i != 0:
-            print("  |")
-            print("  v")
+            # print("  |")
+            # print("  v")
+            line += "  |" + "\n" + "  v" + "\n"
         else:
-            print()
+            # print()
+            line += "\n"
+        printableTable.append(line)
 
 # Creates a new scope, increases current nesting level and adds scope to the symbol table
 def addScope():
@@ -185,7 +121,8 @@ def addScope():
 def removeScope():
     global scopeDepth
     global mainFrameSize
-    print("###### SYMBOL TABLE BEFORE REMOVAL ######\n")
+    # print("###### SYMBOL TABLE BEFORE REMOVAL ######\n")
+    printableTable.append("###### SYMBOL TABLE BEFORE REMOVAL ######\n\n")
     printSymbolTable()
     scopeDepth -= 1
     scopeSize = symbolTable.pop().size
@@ -195,11 +132,14 @@ def removeScope():
         symbolTable[-1].entities[-1].framelength = scopeSize
     # print("------ REMOVED SCOPE ------")
     # print("Current depth:", scopeDepth, "\n")
-    print("###### SYMBOL TABLE AFTER REMOVAL ######\n")
+    # print("###### SYMBOL TABLE AFTER REMOVAL ######\n")
+    printableTable.append("###### SYMBOL TABLE AFTER REMOVAL ######\n\n")
     printSymbolTable()
     if scopeDepth == 0:
-        print("Symbol table is empty")
-        print("Main frame size:", mainFrameSize, "\n")
+        # print("Symbol table is empty")
+        # print("Main frame size:", mainFrameSize, "\n")
+        printableTable.append("Symbol table is empty\n")
+        printableTable.append("Main frame size: " + str(mainFrameSize) + "\n\n")
 
 # Adds given entity to the last scope (entity types: var, func, par)
 def addEntity(entity, entityType):
@@ -251,7 +191,6 @@ def newTemp():
 def backpatch(list1, z):
     global quadList
     for label in list1:
-        # NOTE might need label-1
         quadList[label-1][3] = z
 
 def nextquad():
@@ -270,14 +209,119 @@ def emptylist():
 
 ########## Assembly code functions ##########
 
+def gnlvcode(v):
+    global tabs
+
+    x = tabs + "lw $t0, -4($sp)" + "\n"
+    distance = searchSymbolTable(v)
+
+    if type(distance[1]) is functionEntity:
+        errorHandler("Expected variable '" + v + "' but found function with the same name instead")
+
+    while distance[0] != 0:
+        x += tabs + "lw $t0, -4($t0)" + "\n"
+        distance[0] -= 1
+
+    x += tabs + "addi $t0, $t0, -" + str(distance[1].offset) + "\n"
+    return x
+    
+def loadvr(v,r):
+    global scopeDepth
+    global tabs
+
+    x = ""
+
+    if v.isnumeric():
+        # v is a number
+        x += tabs + "li " + r + ", " + v + "\n"
+
+    else:
+
+        ldist = searchSymbolTable(v)
+
+        if type(ldist[1]) is functionEntity:
+            errorHandler("Expected variable '" + v + "' but found function with the same name instead")
+
+        if ldist[0] == scopeDepth-1:
+            # variable is global
+            x += tabs + "lw " + r + ", -" + str(ldist[1].offset) + "($s0)" +"\n"
+
+        elif ldist[0] == 0:
+            # variable is local
+            if ((type(ldist[1]) is variableEntity) or (type(ldist[1]) is parameterEntity and ldist[1].mode == "CV")):
+                # symbol is local variable or temporary or copied parameter
+                x += tabs + "lw " + r + ", -" + str(ldist[1].offset) + "($sp)" + "\n"
+            
+            else:
+                # symbol is a parameter passed by reference
+                x += tabs + "lw $t0, -" + str(ldist[1].offset) + "($sp)" + "\n"
+                x += tabs + "lw " + r + ", ($t0)" + "\n"
+
+        else:
+            # variable is in an ancestor (not global)
+            if ((type(ldist[1]) is variableEntity) or (type(ldist[1]) is parameterEntity and ldist[1].mode == "CV")):
+                # symbol is local variable or copied parameter in ancestor
+                x += gnlvcode(v)
+                x += tabs + "lw " + r + ", ($t0)" + "\n"
+            
+            else:
+                # symbol is a parameter passed by reference in ancestor
+                x += gnlvcode(v)
+                x += tabs + "lw $t0, ($t0)" + "\n"
+                x += tabs + "lw " + r + ", ($t0)" + "\n"
+
+    return x
+    
+def storerv(r,v):
+    global scopeDepth
+    global tabs
+
+    x = ""
+    sdist = searchSymbolTable(v)
+
+    if sdist[0] == scopeDepth-1:
+        # variable is global
+        x += tabs + "sw " + r + ", -" + str(sdist[1].offset) + "($s0)" + "\n"
+
+    elif sdist[0] == 0:
+        # variable is local
+        if ((type(sdist[1]) is variableEntity) or (type(sdist[1]) is parameterEntity and sdist[1].mode == "CV")):
+            # symbol is local variable or temporary or copied parameter
+            x += tabs + "sw " + r + ", -" + str(sdist[1].offset) + "($sp)" + "\n"
+        
+        else:
+            # symbol is a parameter passed by reference
+            x += tabs + "lw $t0, -" + str(sdist[1].offset) + "($sp)" + "\n"
+            x += tabs + "sw " + r + ", ($t0)" + "\n"
+
+    else:
+        # variable is in an ancestor (not global)
+        if ((type(sdist[1]) is variableEntity) or (type(sdist[1]) is parameterEntity and sdist[1].mode == "CV")):
+            # symbol is local variable or copied parameter in ancestor
+            x += gnlvcode(v)
+            x += tabs + "sw " + r + ", ($t0)" + "\n"
+        
+        else:
+            # symbol is a parameter passed by reference in ancestor
+            x += gnlvcode(v)
+            x += tabs + "lw $t0, ($t0)" + "\n"
+            x += tabs + "sw " + r + ", ($t0)" + "\n"
+
+    return x
+
 # Translates quads of current code block
 def translateBlock(isMain):
     global transQuad
+    global tabs
     
     parList = []
+    loopCounter = 0
 
     for i in range(transQuad, len(quadList)-1):
         quad = quadList[i]
+
+        # if i >= 9:
+        #     tabs = "\t\t"
         
         labelBlock = ""
         label = "L" + str(i + 1) + ":"
@@ -293,99 +337,102 @@ def translateBlock(isMain):
                 # add main label
                 assemblyList.append("Lmain:\n")
                 # make enough space in stack for main
-                labelBlock += "\t\t" + "addi $sp, $sp, " + str(symbolTable[-1].size) + "\n"
+                labelBlock += tabs + "addi $sp, $sp, " + str(symbolTable[-1].size) + "\n"
                 # save at $s0 the start of main's frame to get easy access to global variables
-                labelBlock += "\t\t" + "move $s0, $sp" + "\n"
+                labelBlock += tabs + "move $s0, $sp" + "\n"
             else:
                 # store return address
-                labelBlock += "\t\t" + "sw $ra, -0($sp)" + "\n"
+                labelBlock += tabs + "sw $ra, -0($sp)" + "\n"
         
         elif qType == "end_block":
             # load return address to $ra and return
-            labelBlock += "\t\t" + "lw $ra, -0($sp)" + "\n"
-            labelBlock += "\t\t" + "jr $ra" + "\n"
+            labelBlock += tabs + "lw $ra, -0($sp)" + "\n"
+            labelBlock += tabs + "jr $ra" + "\n"
 
         elif qType == "jump":
-            labelBlock += "\t\t" + "b L" + resTarget + "\n"
+            labelBlock += tabs + "b L" + resTarget + "\n"
 
         elif qType == "inp":
-            labelBlock += "\t\t" + "li $v0, 5" + "\n"
-            labelBlock += "\t\t" + "syscall" + "\n"
-            labelBlock += storerv("$v0", op1)       # NOTE should change
+            labelBlock += tabs + "li $v0, 5" + "\n"
+            labelBlock += tabs + "syscall" + "\n"
+            labelBlock += storerv("$v0", op1)       
 
         elif qType == "out":
-            labelBlock += "\t\t" + "li $v0, 1" + "\n"
-            labelBlock += loadvr(op1, "$a0")       # NOTE should change
-            labelBlock += "\t\t" + "syscall" + "\n"
+            labelBlock += tabs + "li $v0, 1" + "\n"
+            labelBlock += loadvr(op1, "$a0")       
+            labelBlock += tabs + "syscall" + "\n"
 
         elif qType == "halt":
-            labelBlock += "\t\t" + "li $v0, 10" + "\n"
-            labelBlock += "\t\t" + "syscall" + "\n"
+            labelBlock += tabs + "li $v0, 10" + "\n"
+            labelBlock += tabs + "syscall" + "\n"
 
         elif qType == "=":
-            labelBlock += loadvr(op1, "$t1")      # NOTE should change
-            labelBlock += loadvr(op2, "$t2")      # NOTE should change
-            labelBlock += "\t\t" + "beq $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")      
+            labelBlock += loadvr(op2, "$t2")      
+            labelBlock += tabs + "beq $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "blt $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "blt $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ">":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "bgt $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "bgt $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<>":
-            labelBlock += loadvr(op1, "$t1")      # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "bne $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")      
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "bne $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<=":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")     # NOTE should change
-            labelBlock += "\t\t" + "ble $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")     
+            labelBlock += tabs + "ble $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ">=":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "bge $t1, $t2, L" + resTarget + "\n"
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "bge $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ":=":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += storerv("$t1", resTarget)# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += storerv("$t1", resTarget)
 
         elif qType == "+":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "add $t1, $t1, $t2" + "\n"
-            labelBlock += storerv("$t1", resTarget)# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "add $t1, $t1, $t2" + "\n"
+            labelBlock += storerv("$t1", resTarget)
 
         elif qType == "-":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "sub $t1, $t1, $t2" + "\n"
-            labelBlock += storerv("$t1", resTarget)# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "sub $t1, $t1, $t2" + "\n"
+            labelBlock += storerv("$t1", resTarget)
 
         elif qType == "*":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "mul $t1, $t1, $t2" + "\n"
-            labelBlock += storerv("$t1", resTarget)# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "mul $t1, $t1, $t2" + "\n"
+            labelBlock += storerv("$t1", resTarget)
 
         elif qType == "/":
-            labelBlock += loadvr(op1, "$t1")       # NOTE should change
-            labelBlock += loadvr(op2, "$t2")       # NOTE should change
-            labelBlock += "\t\t" + "div $t1, $t1, $t2" + "\n"
-            labelBlock += storerv("$t1", resTarget)# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       
+            labelBlock += loadvr(op2, "$t2")       
+            labelBlock += tabs + "div $t1, $t1, $t2" + "\n"
+            labelBlock += storerv("$t1", resTarget)
 
         elif qType == "retv":
             labelBlock += loadvr(op1, "$t1")
             # get return slot address
-            labelBlock += "\t\t" + "lw $t0, -8($sp)" + "\n"
+            labelBlock += tabs + "lw $t0, -8($sp)" + "\n"
             # save return value to the slot
-            labelBlock += "\t\t" + "sw $t1, -0($t0)" + "\n"
+            labelBlock += tabs + "sw $t1, -0($t0)" + "\n"
+            # load return address to $ra and return
+            labelBlock += tabs + "lw $ra, -0($sp)" + "\n"
+            labelBlock += tabs + "jr $ra" + "\n"
 
         elif qType == "par":
             parList.append([label, quad])
@@ -395,34 +442,48 @@ def translateBlock(isMain):
             if type(symbol[1]) is not functionEntity:
                 errorHandler("Expected function '" + op1 + "' but found variable with the same name instead")
 
+            framelength = symbol[1].framelength
+            if framelength == -1:
+                # framelength has not been stored yet, function tries to call itself
+                # framelength will be the size of the current scope
+                framelength = symbolTable[-1].size
+
             if len(parList) == 0:
                 # function doesn't have parameters
                 # initialize frame for called function
-                labelBlock += "\t\t" + "addi $fp, $sp, " + str(symbol[1].framelength) + "\n"
+                labelBlock += tabs + "addi $fp, $sp, " + str(framelength) + "\n"
             else:
                 # initialize frame for called function and store parameters
                 # frame must be initialized by the 1st parameter
-                storeParams(parList, symbol[1].framelength)
+                storeParams(parList, framelength)
+                # empty parList once used
+                parList = []
 
             if symbol[0] == 1:
                 # called function has same depth with caller
-                labelBlock += "\t\t" + "lw $t0, -4($sp)" + "\n"
-                labelBlock += "\t\t" + "sw $t0, -4(#fp)" + "\n"
+                labelBlock += tabs + "lw $t0, -4($sp)" + "\n"
+                labelBlock += tabs + "sw $t0, -4($fp)" + "\n"
 
             else:
                 # caller function has bigger depth than the called, caller is parent of called
-                labelBlock += "\t\t" + "sw $sp, -4($fp)" + "\n"
+                labelBlock += tabs + "sw $sp, -4($fp)" + "\n"
             
             # done with setting access address, move stack pointer and call the function
-            labelBlock += "\t\t" + "addi $sp, $sp, " + symbol[1].framelength + "\n"
-            labelBlock += "\t\t" + "jal L" + str(symbol[1].startQuad + 1) + "\n"
-            labelBlock += "\t\t" + "addi $sp, $sp, -" + symbol[1].framelength + "\n"
+            labelBlock += tabs + "addi $sp, $sp, " + str(framelength) + "\n"
+            labelBlock += tabs + "jal L" + str(symbol[1].startQuad) + "\n"
+            labelBlock += tabs + "addi $sp, $sp, -" + str(framelength) + "\n"
 
 
 
         if qType != "par":
             # we append the parameter's code in storeParams() method
             assemblyList.append(labelBlock)
+            # print("created block:")
+            # print(labelBlock)
+
+        loopCounter += 1
+
+    transQuad += loopCounter
 
 def storeParams(parList, framelength):
     initializedFrame = False    # flag used to determine if a 'par' command has already initialized the function frame
@@ -438,12 +499,12 @@ def storeParams(parList, framelength):
 
         if not initializedFrame:
             # frame length is stored in the last scope
-            labelBlock += "\t\t" + "addi $fp, $sp, " + str(framelength) + "\n"
+            labelBlock += tabs + "addi $fp, $sp, " + str(framelength) + "\n"
             initializedFrame = True
             
         if op2 == "CV":
             labelBlock += loadvr(op1, "$t0")
-            labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+            labelBlock += tabs + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
         
         elif op2 == "REF":
             symbol = searchSymbolTable(op1)
@@ -454,41 +515,42 @@ def storeParams(parList, framelength):
                 # variable has same depth with caller
                 if ((type(symbol[1]) is variableEntity) or (type(symbol[1]) is parameterEntity and symbol[1].mode == "CV")):
                     # symbol is local variable in caller or copied parameter 
-                    labelBlock += "\t\t" + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
-                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+                    labelBlock += tabs + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
+                    labelBlock += tabs + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
                 
                 else:
                     # symbol is a parameter passed to caller by reference
-                    labelBlock += "\t\t" + "lw $t0, -" + str(symbol[1].offset) + "($sp)" + "\n"
-                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+                    labelBlock += tabs + "lw $t0, -" + str(symbol[1].offset) + "($sp)" + "\n"
+                    labelBlock += tabs + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
 
             else:
                 # variable is deeper than the caller
                 if ((type(symbol[1]) is variableEntity) or (type(symbol[1]) is parameterEntity and symbol[1].mode == "CV")):
                     # symbol is variable or copied parameter
                     labelBlock += gnlvcode(op1)
-                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+                    labelBlock += tabs + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
 
                 else:
                     # symbol is a parameter passed by reference
                     labelBlock += gnlvcode(op1)
-                    labelBlock += "\t\t" + "lw $t0, -0($t0)" + "\n"
-                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+                    labelBlock += tabs + "lw $t0, -0($t0)" + "\n"
+                    labelBlock += tabs + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
 
         else:
             # return parameter is always a temporary variable, no need to check if we found a function
             symbol = searchSymbolTable(op1)
-            labelBlock += "\t\t" + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
-            labelBlock += "\t\t" + "sw $t0, -8($fp)" + "\n"
+            labelBlock += tabs + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
+            labelBlock += tabs + "sw $t0, -8($fp)" + "\n"
 
         # done with this parameter, increase counter and add code block
         parCounter += 1
         assemblyList.append(labelBlock)
+        # print("created block:")
+        # print(labelBlock)
 
 
+########## Lexical Analyzer ##########
 
-
-# Lexical Analyzer
 def lexAn():
 
     state = "start"
@@ -1295,6 +1357,8 @@ def block(programName, isMain):
     if isMain:
         genquad("halt", "_", "_", "_")
     genquad("end_block", programName, "_", "_")
+    # block completed, translate it to assembly
+    translateBlock(isMain)
     # function ended, remove it's scope from the symbol table
     removeScope()
 
@@ -1305,7 +1369,7 @@ def program():
         token = lexAn()
         programName = ID()
         # add scope to symbol table for main
-        addScope()
+        addScope() 
         block(programName, True)
         if token.tkType == "terminator":
             print("No syntax errors found")
@@ -1348,7 +1412,9 @@ synAn()
 
 sourceFile.close()
 
+
 ########## create intermediate-code file (.int) ##########
+
 try:
     intFile = open(fileName + ".int", "w")
 except:
@@ -1359,6 +1425,36 @@ for num, quad in enumerate(quadList):
 
 intFile.close()
 print("Generated '" + fileName + ".int" + "' successfully")
+
+
+########## create symbol table file (.stf) ##########
+
+try:
+    stfFile = open(fileName + ".stf", "w")
+except:
+    sys.exit("Error occured in symbol table file creation")
+for line in printableTable:
+    stfFile.write(line)
+
+stfFile.close()
+print("Generated '" + fileName + ".stf" + "' successfully")
+
+
+########## create intermediate-code file (.int) ##########
+
+try:
+    assemblyFile = open(fileName + ".asm", "w")
+except:
+    sys.exit("Error occured in assembly file creation")
+
+# add jump to main at the beginning
+assemblyFile.write(tabs + "j Lmain" + "\n")
+for codeBlock in assemblyList:
+    assemblyFile.write(codeBlock)
+
+assemblyFile.close()
+print("Generated '" + fileName + ".asm" + "' successfully")
+
 
 ########## create C code file (if source code only has a main function) ##########
 
