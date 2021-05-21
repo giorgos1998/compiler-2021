@@ -202,6 +202,9 @@ def emptylist():
 # Translates quads of current code block
 def translateBlock(isMain):
     global transQuad
+    
+    parList = []
+
     for i in range(transQuad, len(quadList)-1):
         quad = quadList[i]
         
@@ -227,10 +230,9 @@ def translateBlock(isMain):
                 labelBlock += "\t\t" + "sw $ra, -0($sp)" + "\n"
         
         elif qType == "end_block":
-            if not isMain:
-                # load return address to $ra and return
-                labelBlock += "\t\t" + "lw $ra, -0($sp)" + "\n"
-                labelBlock += "\t\t" + "jr $ra" + "\n"
+            # load return address to $ra and return
+            labelBlock += "\t\t" + "lw $ra, -0($sp)" + "\n"
+            labelBlock += "\t\t" + "jr $ra" + "\n"
 
         elif qType == "jump":
             labelBlock += "\t\t" + "b L" + resTarget + "\n"
@@ -238,11 +240,11 @@ def translateBlock(isMain):
         elif qType == "inp":
             labelBlock += "\t\t" + "li $v0, 5" + "\n"
             labelBlock += "\t\t" + "syscall" + "\n"
-            labelBlock += "\t\t" + storerv("$v0", op1) + "\n"       # NOTE should change
+            labelBlock += storerv("$v0", op1)       # NOTE should change
 
         elif qType == "out":
             labelBlock += "\t\t" + "li $v0, 1" + "\n"
-            labelBlock += "\t\t" + loadvr(op1, "$a0") + "\n"        # NOTE should change
+            labelBlock += loadvr(op1, "$a0")       # NOTE should change
             labelBlock += "\t\t" + "syscall" + "\n"
 
         elif qType == "halt":
@@ -250,65 +252,166 @@ def translateBlock(isMain):
             labelBlock += "\t\t" + "syscall" + "\n"
 
         elif qType == "=":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")      # NOTE should change
+            labelBlock += loadvr(op2, "$t2")      # NOTE should change
             labelBlock += "\t\t" + "beq $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "blt $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ">":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "bgt $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<>":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")      # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "bne $t1, $t2, L" + resTarget + "\n"
 
         elif qType == "<=":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")     # NOTE should change
             labelBlock += "\t\t" + "ble $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ">=":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "bge $t1, $t2, L" + resTarget + "\n"
 
         elif qType == ":=":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += storerv("$t1", resTarget)# NOTE should change
 
         elif qType == "+":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "add $t1, $t1, $t2" + "\n"
-            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+            labelBlock += storerv("$t1", resTarget)# NOTE should change
 
         elif qType == "-":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "sub $t1, $t1, $t2" + "\n"
-            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+            labelBlock += storerv("$t1", resTarget)# NOTE should change
 
         elif qType == "*":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "mul $t1, $t1, $t2" + "\n"
-            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+            labelBlock += storerv("$t1", resTarget)# NOTE should change
 
         elif qType == "/":
-            labelBlock += "\t\t" + loadvr(op1, "$t1") + "\n"       # NOTE should change
-            labelBlock += "\t\t" + loadvr(op2, "$t2") + "\n"       # NOTE should change
+            labelBlock += loadvr(op1, "$t1")       # NOTE should change
+            labelBlock += loadvr(op2, "$t2")       # NOTE should change
             labelBlock += "\t\t" + "div $t1, $t1, $t2" + "\n"
-            labelBlock += "\t\t" + storerv("$t1", resTarget) + "\n"# NOTE should change
+            labelBlock += storerv("$t1", resTarget)# NOTE should change
 
-        # TODO function handling (ret, par, call)
+        elif qType == "retv":
+            labelBlock += loadvr(op1, "$t1")
+            # get return slot address
+            labelBlock += "\t\t" + "lw $t0, -8($sp)" + "\n"
+            # save return value to the slot
+            labelBlock += "\t\t" + "sw $t1, -0($t0)" + "\n"
 
+        elif qType == "par":
+            parList.append([label, quad])
+
+        elif qType == "call":
+            symbol = searchSymbolTable(op1)
+            if type(symbol[1]) is not functionEntity:
+                errorHandler("Expected function '" + op1 + "' but found variable with the same name instead")
+
+            if len(parList) == 0:
+                # function doesn't have parameters
+                # initialize frame for called function
+                labelBlock += "\t\t" + "addi $fp, $sp, " + str(symbol[1].framelength) + "\n"
+            else:
+                # initialize frame for called function and store parameters
+                # frame must be initialized by the 1st parameter
+                storeParams(parList, symbol[1].framelength)
+
+            if symbol[0] == 1:
+                # called function has same depth with caller
+                labelBlock += "\t\t" + "lw $t0, -4($sp)" + "\n"
+                labelBlock += "\t\t" + "sw $t0, -4(#fp)" + "\n"
+
+            else:
+                # caller function has bigger depth than the called, caller is parent of called
+                labelBlock += "\t\t" + "sw $sp, -4($fp)" + "\n"
+            
+            # done with setting access address, move stack pointer and call the function
+            labelBlock += "\t\t" + "addi $sp, $sp, " + symbol[1].framelength + "\n"
+            labelBlock += "\t\t" + "jal L" + str(symbol[1].startQuad + 1) + "\n"
+            labelBlock += "\t\t" + "addi $sp, $sp, -" + symbol[1].framelength + "\n"
+
+
+
+        if qType != "par":
+            # we append the parameter's code in storeParams() method
+            assemblyList.append(labelBlock)
+
+def storeParams(parList, framelength):
+    initializedFrame = False    # flag used to determine if a 'par' command has already initialized the function frame
+    parCounter = 0              # keeps count of how many parameters have been found before 'call' is reached
+
+    for pair in parList:
+        # parList contains pairs of label and quad
+
+        labelBlock = pair[0]
+    
+        op1 = str(pair[1][1])
+        op2 = str(pair[1][2])
+
+        if not initializedFrame:
+            # frame length is stored in the last scope
+            labelBlock += "\t\t" + "addi $fp, $sp, " + str(framelength) + "\n"
+            initializedFrame = True
+            
+        if op2 == "CV":
+            labelBlock += loadvr(op1, "$t0")
+            labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+        
+        elif op2 == "REF":
+            symbol = searchSymbolTable(op1)
+            if type(symbol[1]) is functionEntity:
+                errorHandler("Expected variable '" + op1 + "' but found function with the same name instead")
+            
+            if symbol[0] == 1:
+                # variable has same depth with caller
+                if ((type(symbol[1]) is variableEntity) or (type(symbol[1]) is parameterEntity and symbol[1].mode == "CV")):
+                    # symbol is local variable in caller or copied parameter 
+                    labelBlock += "\t\t" + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
+                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+                
+                else:
+                    # symbol is a parameter passed to caller by reference
+                    labelBlock += "\t\t" + "lw $t0, -" + str(symbol[1].offset) + "($sp)" + "\n"
+                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+
+            else:
+                # variable is deeper than the caller
+                if ((type(symbol[1]) is variableEntity) or (type(symbol[1]) is parameterEntity and symbol[1].mode == "CV")):
+                    # symbol is variable or copied parameter
+                    labelBlock += gnlvcode(op1)
+                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+
+                else:
+                    # symbol is a parameter passed by reference
+                    labelBlock += gnlvcode(op1)
+                    labelBlock += "\t\t" + "lw $t0, -0($t0)" + "\n"
+                    labelBlock += "\t\t" + "sw $t0, -" + str(12 + 4*parCounter) + "($fp)" + "\n"
+
+        else:
+            # return parameter is always a temporary variable, no need to check if we found a function
+            symbol = searchSymbolTable(op1)
+            labelBlock += "\t\t" + "addi $t0, $sp, -" + str(symbol[1].offset) + "\n"
+            labelBlock += "\t\t" + "sw $t0, -8($fp)" + "\n"
+
+        # done with this parameter, increase counter and add code block
+        parCounter += 1
         assemblyList.append(labelBlock)
 
 
@@ -1111,10 +1214,7 @@ def block(programName, isMain):
     global token
     declarations()
     subprograms()
-    if isMain:
-        # TODO add Lmain label
-        pass
-    else:
+    if not isMain:
         # the function entity is not on the last scope at this point, but on the previous one
         # also, it is the last entity in that scope so far 
         symbolTable[-2].entities[-1].startQuad = nextquad()
