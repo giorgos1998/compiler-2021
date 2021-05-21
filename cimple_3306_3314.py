@@ -148,7 +148,7 @@ def searchSymbolTable(symbol):
         scope = symbolTable[i]
         for entity in scope.entities:
             if entity.name == symbol:
-                return scopeDepth - scope.nestingLevel
+                return [scopeDepth - scope.nestingLevel, entity]
     errorHandler("Cannot find '" + symbol + "', variable or function not declared")
 
 
