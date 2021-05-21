@@ -19,8 +19,6 @@ symbolTable = []    # list with active scopes (Symbol Table)
 scopeDepth = 0      # current maximum nesting level in symbol table
 mainFrameSize = 0   # frame size of the main function
 
-transQuad = 0       # current quad for translation
-assemblyList = []   # list with assembly instructions
 
 # Token class used by lexical analyzer
 class Token:
@@ -57,11 +55,10 @@ class functionEntity:
         self.arguments = []
         self.framelength = -1
         self.type = type
-        self.startQuad = -1
 
     def ToString(self):
-        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments) + "\nFRAMELENGTH: "
-        result += str(self.framelength) + "\nTYPE: " + self.type + "\nSTART: L" + str(self.startQuad) + "\n"
+        result = "TYPE: function\nNAME: " + self.name + "\nARGUMENTS: " + str(self.arguments)
+        result += "\nFRAMELENGTH: " + str(self.framelength) + "\nTYPE: " + self.type + "\n"
         return result
 
 # parameter entity class used in scopes of symbol table
@@ -74,6 +71,77 @@ class parameterEntity:
     def ToString(self):
         result = "TYPE: parameter\nNAME: " + self.name + "\nMODE: " + self.mode + "\nOFFSET: " + str(self.offset) + "\n"
         return result
+
+
+def gnlvcode(v):
+    
+    x = "\t\t"+"lw $t0,-4($sp)"+"\n"
+    distance = searchSymbolTable(v)
+    while distance[0] !=0:
+        x+="\t\t"+"lw $t0,-4($t0)"+"\n"
+        distance[0] -=4
+
+    x+="\t\t"+"addi $t0,$t0,-"+ distance[1].offset +"\n"
+    return x
+    
+
+
+
+def loadvr(v,r):
+    x = ""
+    ldist = searchSymbolTable(v)
+
+    if ldist[0] == scopeDepth :
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
+
+    elif ldist[0] == 0 and ldist[1].mode == "CV":
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
+        
+    elif ldist[0] == 0 and ldist[1].mode == "REF":
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
+    elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "CV":
+        x+= gnlvcode(v)
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
+    elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "REF":
+        x+= gnlvcode(v)
+        x+= "\t\t"+"lw $t0,($t0)"+"\n"
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
+    return x
+    
+
+
+def storerv(r,v):
+    x = ""
+    sdist = searchSymbolTable(v)
+
+    if sdist[0] == scopeDepth:
+        x+= "\t\t" + "sw $tr,-offset($s0)" + "\n"
+
+    elif sdist[0] == 0 and sdist[1].mode == "CV":
+        x+= "\t\t" + "sw $"+r+","+ sdist[1].offset + "\n"
+
+    elif sdist[0] == 0 and sdist[1].mode == "REF":
+        x+= "\t\t" + "lw $t0,"+ sdist[1].offset  + "\n"
+        
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+        
+    elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "CV":
+        x+=gnlvcode(v)
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+
+    elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "REF":
+        x+= gnlvcode(v)   
+        x+= "\t\t" + "lw $t0,($t0)" + "\n"
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+
+    return x
+   
+    
+
 
 
 ########## Syntax Table functions ##########
@@ -1224,7 +1292,6 @@ def block(programName, isMain):
     if isMain:
         genquad("halt", "_", "_", "_")
     genquad("end_block", programName, "_", "_")
-    translateBlock(isMain)
     # function ended, remove it's scope from the symbol table
     removeScope()
 
@@ -1236,8 +1303,6 @@ def program():
         programName = ID()
         # add scope to symbol table for main
         addScope()
-        # add initial jump to main in assembly
-        assemblyList.append("L0:\t\t" + "b Lmain\n")
         block(programName, True)
         if token.tkType == "terminator":
             print("No syntax errors found")
