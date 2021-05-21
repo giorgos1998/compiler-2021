@@ -78,12 +78,10 @@ def gnlvcode(v):
     x = "\t\t"+"lw $t0,-4($sp)"+"\n"
     distance = searchSymbolTable(v)
     while distance[0] !=0:
-        y="\t\t"+"lw $t0,-4($t0)"+"\n"
-        x+=y
+        x+="\t\t"+"lw $t0,-4($t0)"+"\n"
         distance[0] -=4
 
-    y="\t\t"+"addi $t0,$t0,-"+ distance[1].offset +"\n"
-    x+=y
+    x+="\t\t"+"addi $t0,$t0,-"+ distance[1].offset +"\n"
     return x
     
 
@@ -94,29 +92,24 @@ def loadvr(v,r):
     ldist = searchSymbolTable(v)
 
     if ldist[0] == scopeDepth :
-        y = "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-        x+=y
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
+
     elif ldist[0] == 0 and ldist[1].mode == "CV":
-        y = "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-        x+=y
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
         
     elif ldist[0] == 0 and ldist[1].mode == "REF":
-        y = "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
-        x+=y
-        y = "\t\t"+"lw $t"+r+",($t0)"+"\n"
-        x+=y
+        x+= "\t\t"+"lw $t"+r+","+ ldist[1].offset +"\n"
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
     elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "CV":
-        z = gnlvcode(v)
-        x+=z
-        y = "\t\t"+"lw $t"+r+",($t0)"+"\n"
-        x+=y
+        x+= gnlvcode(v)
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
     elif (ldist[0] != 0 or ldist[0] != scopeDepth) and ldist[1].mode == "REF":
-        z = gnlvcode(v)
-        x+=z
-        y = "\t\t"+"lw $t0,($t0)"+"\n"
-        x+=y
-        y = "\t\t"+"lw $t"+r+",($t0)"+"\n"
-        x+=y
+        x+= gnlvcode(v)
+        x+= "\t\t"+"lw $t0,($t0)"+"\n"
+        x+= "\t\t"+"lw $t"+r+",($t0)"+"\n"
+
     return x
     
 
@@ -124,29 +117,27 @@ def loadvr(v,r):
 def storerv(r,v):
     x = ""
     sdist = searchSymbolTable(v)
-    
+
     if sdist[0] == scopeDepth:
-        y= "\t\t" + "sw $tr,-offset($s0)" + "\n"
-        x+=y
+        x+= "\t\t" + "sw $tr,-offset($s0)" + "\n"
+
     elif sdist[0] == 0 and sdist[1].mode == "CV":
-        y= "\t\t" + "sw $"+r+","+ sdist[1].offset + "\n"
-        x+=y
+        x+= "\t\t" + "sw $"+r+","+ sdist[1].offset + "\n"
+
     elif sdist[0] == 0 and sdist[1].mode == "REF":
-        y= "\t\t" + "lw $t0,"+ sdist[1].offset  + "\n"
-        x+=y
-        y= "\t\t" + "sw $t"+r+",($t0)" + "\n"
-        x+=y
+        x+= "\t\t" + "lw $t0,"+ sdist[1].offset  + "\n"
+        
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+        
     elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "CV":
-        z=gnlvcode(v)
-        x+=z
-        y= "\t\t" + "sw $t"+r+",($t0)" + "\n"
-        x+=y
+        x+=gnlvcode(v)
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+
     elif (sdist[0] != 0 or sdist[0] != scopeDepth) and sdist[1].mode == "REF":
-        gnlvcode(v) 
-        x+=z   
-        y= "\t\t" + "lw $t0,($t0)" + "\n"
-        x+=y
-        y= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+        x+= gnlvcode(v)   
+        x+= "\t\t" + "lw $t0,($t0)" + "\n"
+        x+= "\t\t" + "sw $t"+r+",($t0)" + "\n"
+
     return x
    
     
